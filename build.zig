@@ -1,6 +1,8 @@
 const std = @import("std");
+const fs = std.fs;
 const CrossTarget = std.build.CrossTarget;
 const Target = std.Target;
+const Step = std.Build.Step;
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -55,6 +57,8 @@ pub fn build(b: *std.Build) void {
     //zig objcopy-O binary zig-out/bin/zkernel kernel.bin
     const exe_path = b.getInstallPath(exe.install_step.?.dest_dir, exe.out_filename);
     const bin = b.addSystemCommand(&.{ "zig", "objcopy", "-O", "binary", exe_path, "kernel.bin" });
+    const bin_step = b.step("bin", "create .bin");
+    bin_step.dependOn(&bin.step);
 
     // This creates a build step. It will be visible in the `zig build --help` menu,
     // and can be selected like this: `zig build run`
@@ -62,8 +66,7 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
     run_step.dependOn(&bin.step);
-    const bin_step = b.step("bin", "create .bin");
-    bin_step.dependOn(&bin.step);
+    build_boot(b, &bin.step);
 
     // Creates a step for unit testing.
     const exe_tests = b.addTest(.{
@@ -77,4 +80,29 @@ pub fn build(b: *std.Build) void {
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
+}
+
+fn build_boot(b: *std.Build, bin_step: *Step) void {
+    const compile_boot_sect = b.addSystemCommand(&.{
+        "nasm",
+        "-f",
+        "bin",
+        "boot/boot_sect_simple.asm",
+        "-o",
+        "boot_sect_simple.bin",
+    });
+    const link = b.addSystemCommand(&.{ "bash", "-c", "cat boot_sect_simple.bin kernel.bin > os-image.bin" });
+
+    _ = b.addSystemCommand(&.{ "bash", "-c", "cat file1 file2 > output" });
+    const run_qemu = b.addSystemCommand(&.{
+        "qemu-system-x86_64",
+        "-fda",
+        "os-image.bin",
+    });
+
+    const build_boot_step = b.step("qemu", "run kernel in qemu");
+    build_boot_step.dependOn(&compile_boot_sect.step);
+    build_boot_step.dependOn(bin_step);
+    build_boot_step.dependOn(&link.step);
+    build_boot_step.dependOn(&run_qemu.step);
 }
