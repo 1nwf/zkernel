@@ -91,9 +91,8 @@ fn build_boot(b: *std.Build, bin_step: *Step) void {
         "-o",
         "boot_sect_simple.bin",
     });
-    const link = b.addSystemCommand(&.{ "bash", "-c", "cat boot_sect_simple.bin kernel.bin > os-image.bin" });
 
-    _ = b.addSystemCommand(&.{ "bash", "-c", "cat file1 file2 > output" });
+    const link = BootLinkStep.create(b, "link bootloader and kernel", &.{ "boot_sect_simple.bin", "kernel.bin" }, "os-image.bin");
     const run_qemu = b.addSystemCommand(&.{
         "qemu-system-x86_64",
         "-fda",
@@ -101,8 +100,32 @@ fn build_boot(b: *std.Build, bin_step: *Step) void {
     });
 
     const build_boot_step = b.step("qemu", "run kernel in qemu");
-    build_boot_step.dependOn(&compile_boot_sect.step);
+    build_boot_step.dependOn(b.getInstallStep());
     build_boot_step.dependOn(bin_step);
+    build_boot_step.dependOn(&compile_boot_sect.step);
     build_boot_step.dependOn(&link.step);
     build_boot_step.dependOn(&run_qemu.step);
 }
+
+const BootLinkStep = struct {
+    step: Step,
+    in_files: []const []const u8,
+    out_file: []const u8,
+
+    fn create(b: *std.Build, name: []const u8, in_files: []const []const u8, out_file: []const u8) *BootLinkStep {
+        const self = b.allocator.create(@This()) catch @panic("error");
+        self.* = .{ .step = Step.init(.custom, name, b.allocator, make), .in_files = in_files, .out_file = out_file };
+        return self;
+    }
+
+    fn make(step: *Step) !void {
+        const self = @fieldParentPtr(@This(), "step", step);
+        var f_out = try fs.cwd().createFile(self.out_file, .{});
+        defer f_out.close();
+        for (self.in_files) |file| {
+            var f_in = try fs.cwd().openFile(file, .{});
+            defer f_in.close();
+            try f_out.writeFileAll(f_in, .{});
+        }
+    }
+};
