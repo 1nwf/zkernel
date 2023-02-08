@@ -1,4 +1,9 @@
 const vga_buffer = @intToPtr([*]volatile u8, 0xB8000);
+
+export fn entry() linksection(".entry") void {
+    main();
+}
+
 export fn main() void {
     print_str("hello from zig");
 }
