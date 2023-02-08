@@ -1,3 +1,4 @@
+const vga = @import("drivers/vga.zig");
 const vga_buffer = @intToPtr([*]volatile u8, 0xB8000);
 
 // kernel entry
@@ -7,7 +8,8 @@ export fn entry() linksection(".entry") void {
 }
 
 export fn main() void {
-    print_str("hello from zig");
+    var screen = vga.create(.{});
+    screen.write("nwf aloufi what is");
 }
 
 fn print_str(values: []const u8) void {
