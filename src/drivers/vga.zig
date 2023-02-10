@@ -36,13 +36,13 @@ const Style = packed struct {
     }
 };
 
-const Char = packed struct {
+pub const Char = packed struct {
     //  bg    fg   ascii
     // 0b0000_1111_01101001;
     ascii: u8,
     style: Style,
 
-    fn create(char: u8, style: Style) Char {
+    pub fn create(char: u8, style: Style) Char {
         return Char{ .style = style, .ascii = char };
     }
 };
@@ -52,31 +52,52 @@ width: u8 = 0,
 style: Style = .{},
 
 pub fn create(style: Style) Screen {
-    return Screen{ .style = style };
+    var s = Screen{ .style = style };
+    s.clearScreen();
+    return s;
 }
 pub fn setColor(self: *Screen, style: Style) void {
-    _ = self;
-    Screen.style = style;
+    self.style = style;
 }
+
 pub fn clearScreen(self: *Screen) void {
-    _ = self;
+    const empty_char = Char.create(' ', self.style);
+    var y: usize = 0;
+    while (y < max_height) : (y += 1) {
+        var x: usize = 0;
+        while (x < max_width) : (x += 1) {
+            var idx = y * max_width + x;
+            buffer[idx] = empty_char;
+        }
+    }
+
+    self.height = 0;
+    self.width = 0;
 }
 pub fn newLine(self: *Screen) void {
+    self.height += 1;
+    self.width = 0;
+}
+
+fn scroll(self: *Screen) void {
     _ = self;
 }
 
 pub fn putChar(self: *Screen, c: u8) void {
     const char = Char.create(c, self.style);
-    var index = self.height * max_width + self.width;
-    buffer[index] = char;
+    var index = (self.height * max_width) + self.width;
+
+    switch (char.ascii) {
+        '\n' => return self.newLine(),
+        else => buffer[index] = char,
+    }
+
     self.width += 1;
-    if (self.width == max_width) {
-        if (self.height == max_height) {
-            self.clearScreen();
-        } else {
-            self.height += 1;
-            self.width = 0;
-        }
+    if (self.height >= max_height and self.width >= max_width) {
+        self.scroll();
+    } else if (self.width >= max_width) {
+        self.height += 1;
+        self.width = 0;
     }
 }
 

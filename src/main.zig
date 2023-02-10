@@ -9,13 +9,5 @@ export fn entry() linksection(".entry") void {
 
 export fn main() void {
     var screen = vga.create(.{});
-    screen.write("nwf aloufi what is");
-}
-
-fn print_str(values: []const u8) void {
-    var i: u8 = 0;
-    for (values) |v| {
-        vga_buffer[i] = v;
-        i += 2;
-    }
+    screen.write("w\nw");
 }
