@@ -47,8 +47,8 @@ pub const Char = packed struct {
     }
 };
 
-height: u8 = 0,
-width: u8 = 0,
+height: usize = 0,
+width: usize = 0,
 style: Style = .{},
 
 pub fn create(style: Style) Screen {
@@ -62,15 +62,10 @@ pub fn setColor(self: *Screen, style: Style) void {
 
 pub fn clearScreen(self: *Screen) void {
     const empty_char = Char.create(' ', self.style);
-    var y: usize = 0;
-    while (y < max_height) : (y += 1) {
-        var x: usize = 0;
-        while (x < max_width) : (x += 1) {
-            var idx = y * max_width + x;
-            buffer[idx] = empty_char;
-        }
+    var idx: usize = 0;
+    while (idx < 2000) : (idx += 1) {
+        buffer[idx] = empty_char;
     }
-
     self.height = 0;
     self.width = 0;
 }
@@ -86,6 +81,7 @@ fn scroll(self: *Screen) void {
 pub fn putChar(self: *Screen, c: u8) void {
     const char = Char.create(c, self.style);
     var index = (self.height * max_width) + self.width;
+    buffer[index] = char;
 
     switch (char.ascii) {
         '\n' => return self.newLine(),
@@ -93,11 +89,13 @@ pub fn putChar(self: *Screen, c: u8) void {
     }
 
     self.width += 1;
-    if (self.height >= max_height and self.width >= max_width) {
-        self.scroll();
-    } else if (self.width >= max_width) {
-        self.height += 1;
+    if (self.width == max_width) {
         self.width = 0;
+        self.height += 1;
+        if (self.height == max_height) {
+            //TODO: scroll if needed
+            self.clearScreen();
+        }
     }
 }
 
