@@ -75,13 +75,19 @@ pub fn newLine(self: *Screen) void {
 }
 
 fn scroll(self: *Screen) void {
-    _ = self;
+    var idx: usize = 80;
+    var empty_char = Char.create(' ', self.style);
+    while (idx != 2000) : (idx += 1) {
+        buffer[idx - 80] = buffer[idx];
+        buffer[idx] = empty_char;
+    }
+    self.height = 24;
+    self.width = 0;
 }
 
 pub fn putChar(self: *Screen, c: u8) void {
     const char = Char.create(c, self.style);
     var index = (self.height * max_width) + self.width;
-    buffer[index] = char;
 
     switch (char.ascii) {
         '\n' => return self.newLine(),
@@ -93,8 +99,7 @@ pub fn putChar(self: *Screen, c: u8) void {
         self.width = 0;
         self.height += 1;
         if (self.height == max_height) {
-            //TODO: scroll if needed
-            self.clearScreen();
+            self.scroll();
         }
     }
 }
