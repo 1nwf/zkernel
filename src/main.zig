@@ -1,6 +1,4 @@
 const vga = @import("drivers/vga.zig");
-const vga_buffer = @intToPtr([*]volatile u8, 0xB8000);
-
 // kernel entry
 // has custom .entry section that is placed first in the .text section
 export fn entry() linksection(".entry") void {
@@ -8,6 +6,7 @@ export fn entry() linksection(".entry") void {
 }
 
 export fn main() void {
-    var screen = vga.create(.{});
-    screen.write("w\nw");
+    var screen = vga.create(.{ .bg = vga.Color.LightRed, .fg = vga.Color.White });
+    screen.write("w" ** 2000);
+    screen.write("last row");
 }
