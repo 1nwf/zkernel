@@ -5,7 +5,7 @@ const max_width = 80;
 
 const Screen = @This();
 
-const Color = enum(u4) {
+pub const Color = enum(u4) {
     Black,
     Blue,
     Green,
@@ -22,17 +22,13 @@ const Color = enum(u4) {
     LightMagenta,
     LightBrown,
     White,
-
-    fn asInt(self: Color) u4 {
-        return @enumToInt(self);
-    }
 };
 
 const Style = packed struct {
-    fg: u4 = @as(u4, Color.White.asInt()),
-    bg: u4 = @as(u4, Color.Black.asInt()),
+    fg: Color = Color.White,
+    bg: Color = Color.Black,
     fn create(bg: Color, fg: Color) Style {
-        return Style{ .bg = bg.asInt(), .fg = fg.asInt() };
+        return Style{ .bg = bg, .fg = fg };
     }
 };
 
