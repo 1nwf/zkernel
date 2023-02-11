@@ -5,7 +5,7 @@ export fn entry() linksection(".entry") void {
     main();
 }
 
-export fn main() void {
+fn main() void {
     var screen = vga.create(.{ .bg = vga.Color.LightRed, .fg = vga.Color.White });
     screen.write("w" ** 2000);
     screen.write("last row");
