@@ -13,13 +13,19 @@ pub fn build(b: *std.Build) void {
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
     // const target = b.standardTargetOptions(.{});
-    const target = .{ .cpu_arch = Target.Cpu.Arch.x86, .os_tag = Target.Os.Tag.freestanding, .abi = Target.Abi.none, .ofmt = .elf };
+    const target = .{
+        .cpu_arch = .x86,
+        .os_tag = Target.Os.Tag.freestanding,
+        .abi = Target.Abi.none,
+        .ofmt = .elf,
+        .cpu_model = .{ .explicit = &Target.x86.cpu.i386 },
+    };
 
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
     // const optimize = b.standardOptimizeOption(.{});
-    const optimize = .ReleaseFast;
+    const optimize = .ReleaseSafe;
 
     const exe = b.addExecutable(.{
         .name = "zkernel",
@@ -92,7 +98,7 @@ fn build_boot(b: *std.Build, bin_step: *Step) void {
 
     const link = BootLinkStep.create(b, "link bootloader and kernel", &.{ "boot_sect_simple.bin", "kernel.bin" }, "os-image.bin");
     const run_qemu = b.addSystemCommand(&.{
-        "qemu-system-x86_64",
+        "qemu-system-i386",
         "-fda",
         "os-image.bin",
     });
