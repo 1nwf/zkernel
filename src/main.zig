@@ -5,8 +5,10 @@ export fn entry() linksection(".entry") void {
     main();
 }
 
-fn main() void {
+fn main() noreturn {
     var screen = vga.create(.{ .bg = vga.Color.LightRed, .fg = vga.Color.White });
-    screen.write("w" ** 2000);
-    screen.write("last row");
+    screen.write("hello {s}", .{"kernel"});
+    while (true) {
+        asm volatile ("hlt");
+    }
 }
