@@ -3,6 +3,11 @@ const buffer = @intToPtr([*]volatile Char, 0xb8000);
 const max_height = 25;
 const max_width = 80;
 
+const std = @import("std");
+const Writer = std.io.Writer;
+const format = std.fmt.format;
+pub const VGAWriter = Writer(*Screen, error{}, writeFn);
+
 const Screen = @This();
 
 pub const Color = enum(u4) {
@@ -52,6 +57,7 @@ pub fn create(style: Style) Screen {
     s.clearScreen();
     return s;
 }
+
 pub fn setColor(self: *Screen, style: Style) void {
     self.style = style;
 }
@@ -100,8 +106,20 @@ pub fn putChar(self: *Screen, c: u8) void {
     }
 }
 
-pub fn write(self: *Screen, str: []const u8) void {
-    for (str) |c| {
+fn writeStr(self: *Screen, bytes: []const u8) void {
+    for (bytes) |c| {
         self.putChar(c);
     }
+}
+inline fn writer(self: *Screen) VGAWriter {
+    return @as(VGAWriter, .{ .context = self });
+}
+
+pub fn write(self: *Screen, comptime data: []const u8, args: anytype) void {
+    format(self.writer(), data, args) catch {};
+}
+
+fn writeFn(self: *Screen, bytes: []const u8) error{}!usize {
+    self.writeStr(bytes);
+    return bytes.len;
 }
