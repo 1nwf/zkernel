@@ -71,7 +71,7 @@ pub fn clearScreen(self: *Screen) void {
     self.height = 0;
     self.width = 0;
 }
-pub fn newLine(self: *Screen) void {
+fn newLine(self: *Screen) void {
     self.height += 1;
     self.width = 0;
 }
@@ -87,26 +87,29 @@ fn scroll(self: *Screen) void {
     self.width = 0;
 }
 
-pub fn putChar(self: *Screen, c: u8) void {
+fn putCharAt(self: *Screen, c: u8, y: usize, x: usize) void {
     const char = Char.create(c, self.style);
-    var index = (self.height * max_width) + self.width;
-
-    switch (char.ascii) {
-        '\n' => return self.newLine(),
-        else => buffer[index] = char,
-    }
+    var index = (y * max_width) + x;
+    buffer[index] = char;
 
     self.width += 1;
     if (self.width == max_width) {
         self.width = 0;
         self.height += 1;
-        if (self.height == max_height) {
-            self.scroll();
-        }
+    }
+    if (self.height >= max_height) {
+        self.scroll();
     }
 }
 
-fn writeStr(self: *Screen, bytes: []const u8) void {
+pub fn putChar(self: *Screen, c: u8) void {
+    switch (c) {
+        '\n' => return self.newLine(),
+        else => return self.putCharAt(c, self.height, self.width),
+    }
+}
+
+pub fn writeStr(self: *Screen, bytes: []const u8) void {
     for (bytes) |c| {
         self.putChar(c);
     }
@@ -117,6 +120,11 @@ inline fn writer(self: *Screen) VGAWriter {
 
 pub fn write(self: *Screen, comptime data: []const u8, args: anytype) void {
     format(self.writer(), data, args) catch {};
+}
+
+pub fn writeln(self: *Screen, comptime data: []const u8, args: anytype) void {
+    self.write(data, args);
+    self.newLine();
 }
 
 fn writeFn(self: *Screen, bytes: []const u8) error{}!usize {
