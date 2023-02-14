@@ -1,4 +1,4 @@
-ENTRY(main)
+ENTRY(entry)
 
 SECTIONS {
     . = 0x1000;
@@ -7,4 +7,7 @@ SECTIONS {
         *(.text)
     }
 
+    .rodata.str1.1 : {
+        *(.rodata)
+    }
 }
