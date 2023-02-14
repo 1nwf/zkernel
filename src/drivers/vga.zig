@@ -8,7 +8,8 @@ const Writer = std.io.Writer;
 const format = std.fmt.format;
 pub const VGAWriter = Writer(*Screen, error{}, writeFn);
 
-const Screen = @This();
+pub const Screen = @This();
+var screen: Screen = undefined;
 
 pub const Color = enum(u4) {
     Black,
@@ -52,14 +53,13 @@ height: usize = 0,
 width: usize = 0,
 style: Style = .{},
 
-pub fn create(style: Style) Screen {
-    var s = Screen{ .style = style };
-    s.clearScreen();
-    return s;
+pub fn init(style: Style) void {
+    screen = Screen{ .style = style };
+    screen.clearScreen();
 }
 
-pub fn setColor(self: *Screen, style: Style) void {
-    self.style = style;
+pub fn setColor(style: Style) void {
+    style = style;
 }
 
 pub fn clearScreen(self: *Screen) void {
@@ -79,11 +79,19 @@ fn newLine(self: *Screen) void {
 fn scroll(self: *Screen) void {
     var idx: usize = 80;
     var empty_char = Char.create(' ', self.style);
-    while (idx != 2000) : (idx += 1) {
+    var currentIdx = (self.height * max_width) + self.width;
+    while (idx != currentIdx) : (idx += 1) {
         buffer[idx - 80] = buffer[idx];
+    }
+    while (idx != currentIdx) : (idx += 1) {
         buffer[idx] = empty_char;
     }
-    self.height = 24;
+
+    if (self.height <= max_height) {
+        self.height -= 1;
+    } else {
+        self.height = 24;
+    }
     self.width = 0;
 }
 
@@ -118,13 +126,13 @@ inline fn writer(self: *Screen) VGAWriter {
     return @as(VGAWriter, .{ .context = self });
 }
 
-pub fn write(self: *Screen, comptime data: []const u8, args: anytype) void {
-    format(self.writer(), data, args) catch {};
+pub fn write(comptime data: []const u8, args: anytype) void {
+    format(screen.writer(), data, args) catch {};
 }
 
-pub fn writeln(self: *Screen, comptime data: []const u8, args: anytype) void {
-    self.write(data, args);
-    self.newLine();
+pub fn writeln(comptime data: []const u8, args: anytype) void {
+    write(data, args);
+    screen.newLine();
 }
 
 fn writeFn(self: *Screen, bytes: []const u8) error{}!usize {
