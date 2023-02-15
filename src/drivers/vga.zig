@@ -1,3 +1,4 @@
+const cursor = @import("cursor.zig");
 // vga text buffer
 const buffer = @intToPtr([*]volatile Char, 0xb8000);
 const max_height = 25;
@@ -49,12 +50,14 @@ pub const Char = packed struct {
     }
 };
 
-height: usize = 0,
-width: usize = 0,
+height: u16 = 0,
+width: u16 = 0,
 style: Style = .{},
 
-pub fn init(style: Style) void {
+pub fn init(style: Style, cursor_shape: cursor.Shape) void {
     screen = Screen{ .style = style };
+    cursor.setShape(cursor_shape);
+    cursor.setLocation(0);
     screen.clearScreen();
 }
 
@@ -137,5 +140,8 @@ pub fn writeln(comptime data: []const u8, args: anytype) void {
 
 fn writeFn(self: *Screen, bytes: []const u8) error{}!usize {
     self.writeStr(bytes);
+    const location: u16 = self.height * max_width + self.width;
+    cursor.setLocation(location);
+
     return bytes.len;
 }

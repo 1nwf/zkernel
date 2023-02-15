@@ -48,7 +48,7 @@ pub fn getLocation() u16 {
     return (upper << 8) | lower;
 }
 
-const Shape = enum {
+pub const Shape = enum {
     Block,
     Underline,
 
