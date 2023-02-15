@@ -19,12 +19,15 @@ fn sendVgaData(register: u8, value: anytype) void {
     io.out(data, value);
 }
 
+fn readVgaData(register: u8) u8 {
+    io.out(address, register);
+    return io.in(data, u8);
+}
+
 /// start and end between 0-15. start can't be greater than end or cursor will be hidden
-pub fn enableCursor(start: u8, end: u8) void {
+fn enableCursor(start: u8, end: u8) void {
     sendVgaData(cursor_start, start);
     sendVgaData(cursor_end, end);
-
-    setLocation(0);
 }
 
 pub fn disableCursor() void {
@@ -37,4 +40,30 @@ pub fn setLocation(pos: u16) void {
 
     sendVgaData(cursor_location_high, upper);
     sendVgaData(cursor_location_low, lower);
+}
+
+pub fn getLocation() u16 {
+    const lower = readVgaData(cursor_location_low);
+    const upper: u16 = readVgaData(cursor_location_high);
+    return (upper << 8) | lower;
+}
+
+const Shape = enum {
+    Block,
+    Underline,
+
+    fn start(self: Shape) u8 {
+        return switch (self) {
+            .Block => 0,
+            .Underline => 14,
+        };
+    }
+    fn end(self: Shape) u8 {
+        _ = self;
+        return 15;
+    }
+};
+
+pub fn setShape(shape: Shape) void {
+    enableCursor(shape.start(), shape.end());
 }
