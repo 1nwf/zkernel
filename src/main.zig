@@ -1,6 +1,6 @@
 const vga = @import("drivers/vga.zig");
 const cursor = @import("drivers/cursor.zig");
-const int = @import("interrupt.zig");
+const int = @import("interrupts/idt.zig");
 const std = @import("std");
 // kernel entry
 // has custom .entry section that is placed first in the .text section
