@@ -79,23 +79,18 @@ fn newLine(self: *Screen) void {
     self.width = 0;
 }
 
-fn scroll(self: *Screen) void {
+pub fn scroll(self: *Screen) void {
     var idx: usize = 80;
     var empty_char = Char.create(' ', self.style);
     var currentIdx = (self.height * max_width) + self.width;
     while (idx != currentIdx) : (idx += 1) {
         buffer[idx - 80] = buffer[idx];
-    }
-    while (idx != currentIdx) : (idx += 1) {
         buffer[idx] = empty_char;
     }
 
-    if (self.height <= max_height) {
-        self.height -= 1;
-    } else {
-        self.height = 24;
-    }
-    self.width = 0;
+    self.height -= 1;
+    const cursor_location: u16 = self.height * max_width + self.width;
+    cursor.setLocation(cursor_location);
 }
 
 fn putCharAt(self: *Screen, c: u8, y: usize, x: usize) void {
@@ -120,7 +115,7 @@ pub fn putChar(self: *Screen, c: u8) void {
     }
 }
 
-pub fn writeStr(self: *Screen, bytes: []const u8) void {
+fn writeStr(self: *Screen, bytes: []const u8) void {
     for (bytes) |c| {
         self.putChar(c);
     }
