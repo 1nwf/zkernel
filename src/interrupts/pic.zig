@@ -1,7 +1,7 @@
 const PICM = 0x20; // master pci
 const PICS = 0xA0; // slave pci
-const PICM_DATA = PICS + 1;
-const PICS_DATA = PICM + 1;
+const PICM_DATA = PICM + 1;
+const PICS_DATA = PICS + 1;
 
 const EOI: u8 = 0x20; // end of interrupt
 

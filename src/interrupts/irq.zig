@@ -1,13 +1,12 @@
 const writeln = @import("../drivers/vga.zig").writeln;
+const write = @import("../drivers/vga.zig").write;
 const idt = @import("idt.zig");
 const Context = @import("idt.zig").Context;
 const sendEoi = @import("pic.zig").sendEoi;
 
 export fn irq_handler(ctx: Context) void {
     const handler = idt.interrupt_handlers[ctx.err_code];
-    if (ctx.err_code == 41) {
-        handler(ctx);
-    }
+    handler(ctx);
     sendEoi(0);
 }
 
