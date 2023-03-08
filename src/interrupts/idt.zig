@@ -10,6 +10,7 @@ pub var descriptor: IDTDescr = undefined;
 const isr = @import("isr.zig");
 const irq = @import("irq.zig");
 const keyboard = @import("../drivers/keyboard.zig");
+const timer = @import("timer.zig");
 
 /// An Entry in the interrupt descriptor table
 pub const Entry = packed struct {
@@ -62,12 +63,16 @@ pub const IDTDescr = extern struct {
 };
 
 pub fn init() void {
+    disable();
     pic.remapPic(0x20, 0x28);
     keyboard.init_keyboard();
+    timer.init_timer(30);
     idt = [_]Entry{Entry.init(@ptrToInt(&isr.isr_common))} ** 256;
     initExceptions();
     initInterrupts();
     descriptor = IDTDescr.init(@sizeOf(IDT) - 1, @ptrToInt(&idt));
+
+    enable();
 }
 
 pub fn load() void {
