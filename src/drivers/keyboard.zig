@@ -13,7 +13,10 @@ export fn keyboard_handler(ctx: int.Context) void {
     _ = ctx;
     const scancode = in(0x60, u8);
     const key = Key.init(scancode);
-    modifiers.update(key);
+    if (Modifiers.is_modifier(key)) {
+        modifiers.update(key);
+        return;
+    }
     if (key.release) {
         return;
     }
@@ -314,6 +317,17 @@ const Modifiers = struct {
 
     fn is_caps(self: Modifiers) bool {
         return self.capslock or self.is_shifted();
+    }
+
+    fn is_modifier(key: Key) bool {
+        const keys = [_]KeyCode{ KeyCode.ShiftRight, KeyCode.ShiftLeft, KeyCode.ControlLeft, KeyCode.ControlRight, KeyCode.CapsLock, KeyCode.NumpadLock, KeyCode.AltLeft, KeyCode.AltRight };
+        inline for (keys) |k| {
+            if (k == key.code) {
+                return true;
+            }
+        }
+
+        return false;
     }
 };
 
