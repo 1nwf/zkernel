@@ -66,7 +66,7 @@ pub fn init() void {
     disable();
     pic.remapPic(0x20, 0x28);
     keyboard.init_keyboard();
-    timer.init_timer(30);
+    timer.init_timer(20);
     idt = [_]Entry{Entry.init(@ptrToInt(&isr.isr_common))} ** 256;
     initExceptions();
     initInterrupts();

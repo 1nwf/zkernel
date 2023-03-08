@@ -1,7 +1,7 @@
 const vga = @import("drivers/vga.zig");
-const cursor = @import("drivers/cursor.zig");
 const int = @import("interrupts/idt.zig");
-const std = @import("std");
+const timer = @import("interrupts/timer.zig");
+
 // kernel entry
 // has custom .entry section that is placed first in the .text section
 export fn entry() linksection(".entry") void {
@@ -9,19 +9,23 @@ export fn entry() linksection(".entry") void {
 }
 
 fn halt() noreturn {
-    asm volatile ("cli");
+    asm volatile ("sti");
     while (true) {
         asm volatile ("hlt");
     }
 }
 
 fn main() noreturn {
-    int.enable();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
-    vga.writeln("hello world", .{});
+    int.enable();
     int.init();
     int.load();
 
-    asm volatile ("int $10");
+    var secs: u8 = 0;
+    while (secs < 10) : (secs += 1) {
+        timer.wait(1);
+        vga.write("{} ", .{secs + 1});
+    }
+
     halt();
 }

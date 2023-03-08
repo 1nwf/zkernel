@@ -5,17 +5,22 @@ const write = @import("../drivers/vga.zig").write;
 
 pub fn init_timer(freq: u32) void {
     int.setIrqHandler(0, timer_handler);
-    const divisor: u16 = @truncate(u16, 1193182 / freq);
+    const divisor: u16 = @truncate(u16, 1193180 / freq);
     const low = @truncate(u8, divisor / 0xFF);
     const high = @truncate(u8, (divisor >> 8) & 0xFF);
 
     out(0x40, low);
     out(0x40, high);
+
+    interval = freq;
 }
+
+var ticks: u32 = 0;
+var interval: u32 = 0;
 
 pub export fn timer_handler(ctx: int.Context) void {
     _ = ctx;
-    write(".", .{});
+    ticks += 1;
 }
 
 pub fn read_count() u16 {
@@ -29,4 +34,13 @@ pub fn read_count() u16 {
     count = (count << 8) | low;
 
     return count;
+}
+
+pub export fn wait(secs: u32) void {
+    var target = ticks + (secs * interval);
+    while (ticks < target) {
+        asm volatile ("nop");
+    }
+
+    return;
 }
