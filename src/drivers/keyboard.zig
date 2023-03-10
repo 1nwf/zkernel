@@ -5,11 +5,11 @@ const write = @import("vga.zig").write;
 const unicode = @import("std").unicode;
 const sendEoi = @import("../interrupts/pic.zig").sendEoi;
 pub fn init_keyboard() void {
-    int.setIrqHandler(1, keyboard_handler);
+    int.setIrqHandler(1, keyboardHandler);
 }
 
 var modifiers = Modifiers.init();
-export fn keyboard_handler(ctx: int.Context) void {
+export fn keyboardHandler(ctx: int.Context) void {
     _ = ctx;
     const scancode = in(0x60, u8);
     const key = Key.init(scancode);
@@ -21,12 +21,13 @@ export fn keyboard_handler(ctx: int.Context) void {
         return;
     }
 
-    var letter = key.to_unicode();
+    var letter = key.decode();
 
     write("{u}", .{letter.value});
 }
 
-fn getLetter(scancode: u8) KeyCode {
+// ported from https://crates.io/crates/pc-keyboard Us104Key keyboard layout
+fn getKey(scancode: u8) KeyCode {
     return switch (scancode) {
         0x01 => KeyCode.Escape, // 01
         0x02 => KeyCode.Key1, // 02
@@ -124,13 +125,13 @@ const Key = struct {
     code: KeyCode,
     release: bool,
     fn init(scancode: u8) Key {
-        const code = getLetter(scancode & 0x3F);
+        const code = getKey(scancode & 0x3F);
         const release = scancode >> 6 == 2;
         return Key{ .code = code, .release = release };
     }
 
-    fn to_unicode(self: Key) DecodedKey {
-        return match_keycode(self.code);
+    fn decode(self: Key) DecodedKey {
+        return DecodedKey.fromKeyCode(self.code);
     }
 };
 
@@ -255,13 +256,6 @@ const KeyCode = enum {
     PowerOnTestOk,
 };
 
-const DecodedKey = struct {
-    value: u21,
-    fn init(comptime val: u21) DecodedKey {
-        return DecodedKey{ .value = val };
-    }
-};
-
 const Modifiers = struct {
     lshift: bool,
     rshift: bool,
@@ -331,497 +325,504 @@ const Modifiers = struct {
     }
 };
 
-fn match_keycode(keycode: KeyCode) DecodedKey {
-    return switch (keycode) {
-        KeyCode.BackTick => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('~');
-            } else {
-                return DecodedKey.init('`');
-            }
-        },
-        KeyCode.Escape => DecodedKey.init(0x1B),
-        KeyCode.Key1 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('!');
-            } else {
-                return DecodedKey.init('1');
-            }
-        },
-        KeyCode.Key2 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('@');
-            } else {
-                return DecodedKey.init('2');
-            }
-        },
-        KeyCode.Key3 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('#');
-            } else {
-                return DecodedKey.init('3');
-            }
-        },
-        KeyCode.Key4 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('$');
-            } else {
-                return DecodedKey.init('4');
-            }
-        },
-        KeyCode.Key5 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('%');
-            } else {
-                return DecodedKey.init('5');
-            }
-        },
-        KeyCode.Key6 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('^');
-            } else {
-                return DecodedKey.init('6');
-            }
-        },
-        KeyCode.Key7 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('&');
-            } else {
+const DecodedKey = struct {
+    value: u21,
+    fn init(comptime val: u21) DecodedKey {
+        return DecodedKey{ .value = val };
+    }
+
+    fn fromKeyCode(keycode: KeyCode) DecodedKey {
+        return switch (keycode) {
+            KeyCode.BackTick => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('~');
+                } else {
+                    return DecodedKey.init('`');
+                }
+            },
+            KeyCode.Escape => DecodedKey.init(0x1B),
+            KeyCode.Key1 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('!');
+                } else {
+                    return DecodedKey.init('1');
+                }
+            },
+            KeyCode.Key2 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('@');
+                } else {
+                    return DecodedKey.init('2');
+                }
+            },
+            KeyCode.Key3 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('#');
+                } else {
+                    return DecodedKey.init('3');
+                }
+            },
+            KeyCode.Key4 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('$');
+                } else {
+                    return DecodedKey.init('4');
+                }
+            },
+            KeyCode.Key5 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('%');
+                } else {
+                    return DecodedKey.init('5');
+                }
+            },
+            KeyCode.Key6 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('^');
+                } else {
+                    return DecodedKey.init('6');
+                }
+            },
+            KeyCode.Key7 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('&');
+                } else {
+                    return DecodedKey.init('7');
+                }
+            },
+            KeyCode.Key8 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('*');
+                } else {
+                    return DecodedKey.init('8');
+                }
+            },
+            KeyCode.Key9 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('(');
+                } else {
+                    return DecodedKey.init('9');
+                }
+            },
+            KeyCode.Key0 => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init(')');
+                } else {
+                    return DecodedKey.init('0');
+                }
+            },
+            KeyCode.Minus => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('_');
+                } else {
+                    return DecodedKey.init('-');
+                }
+            },
+            KeyCode.Equals => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('+');
+                } else {
+                    return DecodedKey.init('=');
+                }
+            },
+            KeyCode.Backspace => DecodedKey.init(0x08),
+            KeyCode.Tab => DecodedKey.init(0x09),
+            KeyCode.Q => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0011}');
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('Q');
+                } else {
+                    return DecodedKey.init('q');
+                }
+            },
+            KeyCode.W => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0017}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('W');
+                } else {
+                    return DecodedKey.init('w');
+                }
+            },
+            KeyCode.E => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0005}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('E');
+                } else {
+                    return DecodedKey.init('e');
+                }
+            },
+            KeyCode.R => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0012}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('R');
+                } else {
+                    return DecodedKey.init('r');
+                }
+            },
+            KeyCode.T => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0014}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('T');
+                } else {
+                    return DecodedKey.init('t');
+                }
+            },
+            KeyCode.Y => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0019}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('Y');
+                } else {
+                    return DecodedKey.init('y');
+                }
+            },
+            KeyCode.U => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0015}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('U');
+                } else {
+                    return DecodedKey.init('u');
+                }
+            },
+            KeyCode.I => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0009}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('I');
+                } else {
+                    return DecodedKey.init('i');
+                }
+            },
+            KeyCode.O => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{000F}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('O');
+                } else {
+                    return DecodedKey.init('o');
+                }
+            },
+            KeyCode.P => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0010}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('P');
+                } else {
+                    return DecodedKey.init('p');
+                }
+            },
+            KeyCode.BracketSquareLeft => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('{');
+                } else {
+                    return DecodedKey.init('[');
+                }
+            },
+            KeyCode.BracketSquareRight => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('}');
+                } else {
+                    return DecodedKey.init(']');
+                }
+            },
+            KeyCode.BackSlash => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('|');
+                } else {
+                    return DecodedKey.init('\\');
+                }
+            },
+            KeyCode.A => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0001}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('A');
+                } else {
+                    return DecodedKey.init('a');
+                }
+            },
+            KeyCode.S => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0013}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('S');
+                } else {
+                    return DecodedKey.init('s');
+                }
+            },
+            KeyCode.D => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0004}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('D');
+                } else {
+                    return DecodedKey.init('d');
+                }
+            },
+            KeyCode.F => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0006}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('F');
+                } else {
+                    return DecodedKey.init('f');
+                }
+            },
+            KeyCode.G => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0007}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('G');
+                } else {
+                    return DecodedKey.init('g');
+                }
+            },
+            KeyCode.H => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0008}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('H');
+                } else {
+                    return DecodedKey.init('h');
+                }
+            },
+            KeyCode.J => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{000A}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('J');
+                } else {
+                    return DecodedKey.init('j');
+                }
+            },
+            KeyCode.K => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{000B}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('K');
+                } else {
+                    return DecodedKey.init('k');
+                }
+            },
+            KeyCode.L => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{000C}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('L');
+                } else {
+                    return DecodedKey.init('l');
+                }
+            },
+            KeyCode.SemiColon => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init(':');
+                } else {
+                    return DecodedKey.init(';');
+                }
+            },
+            KeyCode.Quote => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('"');
+                } else {
+                    return DecodedKey.init('\'');
+                }
+            },
+            // Enter gives LF, not CRLF or CR
+            KeyCode.Enter => DecodedKey.init(10),
+            KeyCode.Z => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{001A}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('Z');
+                } else {
+                    return DecodedKey.init('z');
+                }
+            },
+            KeyCode.X => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0018}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('X');
+                } else {
+                    return DecodedKey.init('x');
+                }
+            },
+            KeyCode.C => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0003}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('C');
+                } else {
+                    return DecodedKey.init('c');
+                }
+            },
+            KeyCode.V => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0016}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('V');
+                } else {
+                    return DecodedKey.init('v');
+                }
+            },
+            KeyCode.B => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{0002}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('B');
+                } else {
+                    return DecodedKey.init('b');
+                }
+            },
+            KeyCode.N => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{000E}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('N');
+                } else {
+                    return DecodedKey.init('n');
+                }
+            },
+            KeyCode.M => {
+                // if map_to_unicode && modifiers.is_ctrl() {
+                // return DecodedKey.init('\u{000D}');
+                // }
+                if (modifiers.is_caps()) {
+                    return DecodedKey.init('M');
+                } else {
+                    return DecodedKey.init('m');
+                }
+            },
+            KeyCode.Comma => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('<');
+                } else {
+                    return DecodedKey.init(',');
+                }
+            },
+            KeyCode.Fullstop => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('>');
+                } else {
+                    return DecodedKey.init('.');
+                }
+            },
+            KeyCode.Slash => {
+                if (modifiers.is_shifted()) {
+                    return DecodedKey.init('?');
+                } else {
+                    return DecodedKey.init('/');
+                }
+            },
+            KeyCode.Spacebar => DecodedKey.init(' '),
+            KeyCode.Delete => DecodedKey.init(127),
+            KeyCode.NumpadSlash => DecodedKey.init('/'),
+            KeyCode.NumpadStar => DecodedKey.init('*'),
+            KeyCode.NumpadMinus => DecodedKey.init('-'),
+            KeyCode.Numpad7 => {
+                // if modifiers.numlock {
                 return DecodedKey.init('7');
-            }
-        },
-        KeyCode.Key8 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('*');
-            } else {
+                // } else {
+                // return DecodedKey.init(KeyCode.Home);
+                // }
+            },
+            KeyCode.Numpad8 => {
+                // if modifiers.numlock {
                 return DecodedKey.init('8');
-            }
-        },
-        KeyCode.Key9 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('(');
-            } else {
+                // } else {
+                // DecodedKey.init(KeyCode.ArrowUp);
+                // }
+            },
+            KeyCode.Numpad9 => {
+                // if modifiers.numlock {
                 return DecodedKey.init('9');
-            }
-        },
-        KeyCode.Key0 => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init(')');
-            } else {
+                // } else {
+                // DecodedKey.init(KeyCode.PageUp);
+                // }
+            },
+            KeyCode.NumpadPlus => DecodedKey.init('+'),
+            KeyCode.Numpad4 => {
+                // if modifiers.numlock {
+                return DecodedKey.init('4');
+                // } else {
+                // DecodedKey.init(KeyCode.ArrowLeft);
+                // }
+            },
+            KeyCode.Numpad5 => DecodedKey.init('5'),
+            KeyCode.Numpad6 => {
+                // if modifiers.numlock {
+                return DecodedKey.init('6');
+                // } else {
+                // return DecodedKey.init(KeyCode.ArrowRight);
+                // }
+            },
+            KeyCode.Numpad1 => {
+                // if modifiers.numlock {
+                return DecodedKey.init('1');
+                // } else {
+                // return DecodedKey.init(KeyCode.End);
+                // }
+            },
+            KeyCode.Numpad2 => {
+                // if modifiers.numlock {
+                return DecodedKey.init('2');
+                // } else {
+                // return DecodedKey.init(KeyCode.ArrowDown);
+                // }
+            },
+            KeyCode.Numpad3 => {
+                // if modifiers.numlock {
+                return DecodedKey.init('3');
+                // } else {
+                // return DecodedKey.init(KeyCode.PageDown);
+                // }
+            },
+            KeyCode.Numpad0 => {
+                // if modifiers.numlock {
                 return DecodedKey.init('0');
-            }
-        },
-        KeyCode.Minus => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('_');
-            } else {
-                return DecodedKey.init('-');
-            }
-        },
-        KeyCode.Equals => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('+');
-            } else {
-                return DecodedKey.init('=');
-            }
-        },
-        KeyCode.Backspace => DecodedKey.init(0x08),
-        KeyCode.Tab => DecodedKey.init(0x09),
-        KeyCode.Q => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0011}');
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('Q');
-            } else {
-                return DecodedKey.init('q');
-            }
-        },
-        KeyCode.W => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0017}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('W');
-            } else {
-                return DecodedKey.init('w');
-            }
-        },
-        KeyCode.E => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0005}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('E');
-            } else {
-                return DecodedKey.init('e');
-            }
-        },
-        KeyCode.R => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0012}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('R');
-            } else {
-                return DecodedKey.init('r');
-            }
-        },
-        KeyCode.T => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0014}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('T');
-            } else {
-                return DecodedKey.init('t');
-            }
-        },
-        KeyCode.Y => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0019}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('Y');
-            } else {
-                return DecodedKey.init('y');
-            }
-        },
-        KeyCode.U => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0015}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('U');
-            } else {
-                return DecodedKey.init('u');
-            }
-        },
-        KeyCode.I => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0009}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('I');
-            } else {
-                return DecodedKey.init('i');
-            }
-        },
-        KeyCode.O => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{000F}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('O');
-            } else {
-                return DecodedKey.init('o');
-            }
-        },
-        KeyCode.P => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0010}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('P');
-            } else {
-                return DecodedKey.init('p');
-            }
-        },
-        KeyCode.BracketSquareLeft => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('{');
-            } else {
-                return DecodedKey.init('[');
-            }
-        },
-        KeyCode.BracketSquareRight => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('}');
-            } else {
-                return DecodedKey.init(']');
-            }
-        },
-        KeyCode.BackSlash => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('|');
-            } else {
-                return DecodedKey.init('\\');
-            }
-        },
-        KeyCode.A => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0001}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('A');
-            } else {
-                return DecodedKey.init('a');
-            }
-        },
-        KeyCode.S => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0013}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('S');
-            } else {
-                return DecodedKey.init('s');
-            }
-        },
-        KeyCode.D => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0004}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('D');
-            } else {
-                return DecodedKey.init('d');
-            }
-        },
-        KeyCode.F => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0006}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('F');
-            } else {
-                return DecodedKey.init('f');
-            }
-        },
-        KeyCode.G => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0007}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('G');
-            } else {
-                return DecodedKey.init('g');
-            }
-        },
-        KeyCode.H => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0008}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('H');
-            } else {
-                return DecodedKey.init('h');
-            }
-        },
-        KeyCode.J => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{000A}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('J');
-            } else {
-                return DecodedKey.init('j');
-            }
-        },
-        KeyCode.K => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{000B}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('K');
-            } else {
-                return DecodedKey.init('k');
-            }
-        },
-        KeyCode.L => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{000C}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('L');
-            } else {
-                return DecodedKey.init('l');
-            }
-        },
-        KeyCode.SemiColon => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init(':');
-            } else {
-                return DecodedKey.init(';');
-            }
-        },
-        KeyCode.Quote => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('"');
-            } else {
-                return DecodedKey.init('\'');
-            }
-        },
-        // Enter gives LF, not CRLF or CR
-        KeyCode.Enter => DecodedKey.init(10),
-        KeyCode.Z => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{001A}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('Z');
-            } else {
-                return DecodedKey.init('z');
-            }
-        },
-        KeyCode.X => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0018}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('X');
-            } else {
-                return DecodedKey.init('x');
-            }
-        },
-        KeyCode.C => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0003}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('C');
-            } else {
-                return DecodedKey.init('c');
-            }
-        },
-        KeyCode.V => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0016}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('V');
-            } else {
-                return DecodedKey.init('v');
-            }
-        },
-        KeyCode.B => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{0002}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('B');
-            } else {
-                return DecodedKey.init('b');
-            }
-        },
-        KeyCode.N => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{000E}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('N');
-            } else {
-                return DecodedKey.init('n');
-            }
-        },
-        KeyCode.M => {
-            // if map_to_unicode && modifiers.is_ctrl() {
-            // return DecodedKey.init('\u{000D}');
-            // }
-            if (modifiers.is_caps()) {
-                return DecodedKey.init('M');
-            } else {
-                return DecodedKey.init('m');
-            }
-        },
-        KeyCode.Comma => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('<');
-            } else {
-                return DecodedKey.init(',');
-            }
-        },
-        KeyCode.Fullstop => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('>');
-            } else {
+                // } else {
+                // DecodedKey.init(KeyCode.Insert);
+                // }
+            },
+            KeyCode.NumpadPeriod => {
+                // if modifiers.numlock {
                 return DecodedKey.init('.');
-            }
-        },
-        KeyCode.Slash => {
-            if (modifiers.is_shifted()) {
-                return DecodedKey.init('?');
-            } else {
-                return DecodedKey.init('/');
-            }
-        },
-        KeyCode.Spacebar => DecodedKey.init(' '),
-        KeyCode.Delete => DecodedKey.init(127),
-        KeyCode.NumpadSlash => DecodedKey.init('/'),
-        KeyCode.NumpadStar => DecodedKey.init('*'),
-        KeyCode.NumpadMinus => DecodedKey.init('-'),
-        KeyCode.Numpad7 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('7');
-            // } else {
-            // return DecodedKey.init(KeyCode.Home);
-            // }
-        },
-        KeyCode.Numpad8 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('8');
-            // } else {
-            // DecodedKey.init(KeyCode.ArrowUp);
-            // }
-        },
-        KeyCode.Numpad9 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('9');
-            // } else {
-            // DecodedKey.init(KeyCode.PageUp);
-            // }
-        },
-        KeyCode.NumpadPlus => DecodedKey.init('+'),
-        KeyCode.Numpad4 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('4');
-            // } else {
-            // DecodedKey.init(KeyCode.ArrowLeft);
-            // }
-        },
-        KeyCode.Numpad5 => DecodedKey.init('5'),
-        KeyCode.Numpad6 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('6');
-            // } else {
-            // return DecodedKey.init(KeyCode.ArrowRight);
-            // }
-        },
-        KeyCode.Numpad1 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('1');
-            // } else {
-            // return DecodedKey.init(KeyCode.End);
-            // }
-        },
-        KeyCode.Numpad2 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('2');
-            // } else {
-            // return DecodedKey.init(KeyCode.ArrowDown);
-            // }
-        },
-        KeyCode.Numpad3 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('3');
-            // } else {
-            // return DecodedKey.init(KeyCode.PageDown);
-            // }
-        },
-        KeyCode.Numpad0 => {
-            // if modifiers.numlock {
-            return DecodedKey.init('0');
-            // } else {
-            // DecodedKey.init(KeyCode.Insert);
-            // }
-        },
-        KeyCode.NumpadPeriod => {
-            // if modifiers.numlock {
-            return DecodedKey.init('.');
-            // } else {
-            // DecodedKey.init(127.into());
-            // }
-        },
-        KeyCode.NumpadEnter => DecodedKey.init(10),
-        else => DecodedKey.init(' '),
-    };
-}
+                // } else {
+                // DecodedKey.init(127.into());
+                // }
+            },
+            KeyCode.NumpadEnter => DecodedKey.init(10),
+            else => DecodedKey.init(' '),
+        };
+    }
+};
