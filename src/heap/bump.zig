@@ -13,7 +13,7 @@ pub fn init(heap_start: usize, heap_size: usize) BumpAlloc {
     return BumpAlloc{ .heap_start = heap_start, .heap_end = heap_start + heap_size, .next = heap_start };
 }
 
-pub fn alloc(self: *BumpAlloc, comptime T: type, value: T) Error.OutOfMemory!*T {
+pub fn alloc(self: *BumpAlloc, comptime T: type, value: T) Error!*T {
     var size: usize = @sizeOf(T);
 
     var start_addr = @intToPtr(*T, self.next);
