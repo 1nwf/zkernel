@@ -1,4 +1,7 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const Error = Allocator.Error;
+
 const BumpAlloc = @This();
 
 heap_start: usize,
@@ -10,16 +13,14 @@ pub fn init(heap_start: usize, heap_size: usize) BumpAlloc {
     return BumpAlloc{ .heap_start = heap_start, .heap_end = heap_start + heap_size, .next = heap_start };
 }
 
-const AllocationError = error{OutOfMemory};
-
-pub fn alloc(self: *BumpAlloc, comptime T: type, value: T) AllocationError!*T {
+pub fn alloc(self: *BumpAlloc, comptime T: type, value: T) Error.OutOfMemory!*T {
     var size: usize = @sizeOf(T);
 
     var start_addr = @intToPtr(*T, self.next);
     var end_addr = @ptrToInt(start_addr) + size;
 
     if (end_addr > self.heap_end) {
-        return AllocationError.OutOfMemory;
+        return Error.OutOfMemory;
     }
     self.next = end_addr;
 
