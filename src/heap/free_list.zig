@@ -25,6 +25,10 @@ pub const Node = struct {
 
         return .{ new_node, value_ptr };
     }
+
+    inline fn address(self: *Node) usize {
+        return @ptrToInt(self);
+    }
 };
 
 const FreeList = @This();
@@ -73,7 +77,32 @@ pub fn alloc(self: *FreeList, comptime T: type, value: T) Error!*T {
     return addr;
 }
 
-pub fn free(self: *FreeList, size: usize) void {
-    _ = size;
-    _ = self;
+pub fn free(self: *FreeList, ptr: anytype) void {
+    const size = @sizeOf(@TypeOf(ptr));
+    const node = @intToPtr(*Node, @ptrToInt(ptr));
+    node.* = Node.init(size, null);
+    self.insert(node);
+}
+
+fn insert(self: *FreeList, node: *Node) void {
+    var prev: ?*Node = null;
+    if (self.head) |head| {
+        var curr_node: ?*Node = head;
+        while (curr_node) |n| {
+            if (n.address() > node.address()) {
+                break;
+            }
+            prev = n;
+            curr_node = n.next;
+        }
+        if (prev) |p| {
+            node.next = p.next;
+            p.next = node;
+        } else {
+            node.next = self.head;
+            self.head = node;
+        }
+    } else {
+        self.head = node;
+    }
 }
