@@ -2,12 +2,12 @@ ENTRY(entry)
 
 SECTIONS {
     . = 0x1000;
-    .text :  {
+    .text : {
 		KEEP(*(.entry))
         *(.text)
     }
 
-    .rodata.str1.1 : {
-        *(.rodata)
+    .rodata : {
+         *(.rodata, .rodata.*)
     }
 }
