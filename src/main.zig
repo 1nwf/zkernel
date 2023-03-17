@@ -2,6 +2,7 @@ const vga = @import("drivers/vga.zig");
 const int = @import("interrupts/idt.zig");
 const timer = @import("interrupts/timer.zig");
 const heap = @import("heap/heap.zig");
+const pg = @import("cpu/paging/paging.zig");
 
 // kernel entry
 // has custom .entry section that is placed first in the .text section
@@ -26,22 +27,7 @@ fn main() !noreturn {
     int.init();
     int.load();
 
-    var fl = heap.FreeListAllocator.init(HEAP_START, HEAP_SIZE);
-    const val = try fl.alloc(u32, 12);
-
-    vga.writeln("val1 {*} {}", .{ val, val.* });
-
-    fl.nodes();
-    var val2 = try fl.alloc(u64, 20);
-    vga.writeln("val2: {*} {}", .{ val2, val2.* });
-
-    fl.nodes();
-
-    fl.free(val2);
-    fl.nodes();
-
-    fl.free(val);
-    fl.nodes();
+    pg.enable_paging();
 
     halt();
 }
