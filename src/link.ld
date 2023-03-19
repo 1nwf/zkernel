@@ -10,4 +10,12 @@ SECTIONS {
     .rodata : {
          *(.rodata, .rodata.*)
     }
+
+	.data : {
+		*(.data)
+	}
+
+	.bss : {
+		*(.bss)
+	}
 }
