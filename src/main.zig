@@ -6,7 +6,7 @@ const pg = @import("cpu/paging/paging.zig");
 
 // kernel entry
 // has custom .entry section that is placed first in the .text section
-export fn entry() void {
+export fn entry() linksection(".entry") void {
     main() catch {};
 }
 
@@ -27,7 +27,8 @@ fn main() !noreturn {
     int.init();
     int.load();
 
-    pg.enable_paging();
+    vga.writeln("hello world", .{});
+    // pg.enable_paging();
 
     halt();
 }
