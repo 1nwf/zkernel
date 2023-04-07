@@ -22,13 +22,13 @@ const HEAP_SIZE: u32 = 108 * 1024; // 100 Kib
 const HEAP_END = HEAP_START + HEAP_SIZE;
 
 fn main() !noreturn {
-    vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
     int.enable();
     int.init();
     int.load();
 
-    vga.writeln("hello world", .{});
-    // pg.enable_paging();
+    vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
+
+    vga.writeln("Kernel Loaded", .{});
 
     halt();
 }
