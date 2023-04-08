@@ -1,7 +1,11 @@
-build:
+kernel_path = zig-out/bin/kernel.bin
+
+build_kernel:
 	zig build
-	zig build --build-file bootloader/build.zig
-	cat bootloader/zig-out/bin/bootloader.bin zig-out/bin/kernel.bin > os-image.bin
+
+run: build_kernel $(kernel_path)
+	cd bootloader && zig build -Dkernel_size=$(shell stat -f%"z" $(kernel_path))
+	cat bootloader/zig-out/bin/bootloader.bin $(kernel_path) > os-image.bin
 	qemu-system-i386 -fda os-image.bin
 	
 clean:
