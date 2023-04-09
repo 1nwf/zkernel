@@ -1,4 +1,5 @@
 zig-out/
 zig-cache/
 *.bin
+*.o
 .DS_Store
