@@ -16,4 +16,9 @@ SECTIONS {
 	.bss : {
 		*(.bss)
 	}
+
+	/DISCARD/ : {
+        *(.comment*);
+    }
+
 }
