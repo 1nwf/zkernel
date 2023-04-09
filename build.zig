@@ -35,7 +35,18 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
     });
     exe.strip = true;
+    exe.code_model = .kernel;
     exe.setLinkerScriptPath(.{ .path = "src/link.ld" });
+
+    const nasm_sources = [_][]const u8{
+        "src/entry.asm",
+    };
+
+    const nasm_out = compileNasmSource(b, &nasm_sources);
+
+    for (nasm_out) |out| {
+        exe.addObjectFileSource(.{ .path = out });
+    }
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -45,4 +56,26 @@ pub fn build(b: *std.Build) void {
     const bin = exe.addObjCopy(.{ .basename = "kernel.bin", .format = .bin });
     const install_step = b.addInstallBinFile(bin.getOutputSource(), bin.basename);
     b.default_step.dependOn(&install_step.step);
+}
+
+fn replaceExtension(b: *std.Build, path: []const u8, new_extension: []const u8) []const u8 {
+    const basename = std.fs.path.basename(path);
+    const ext = std.fs.path.extension(basename);
+    return b.fmt("{s}{s}", .{ basename[0 .. basename.len - ext.len], new_extension });
+}
+
+fn compileNasmSource(b: *std.Build, comptime nasm_sources: []const []const u8) [nasm_sources.len][]const u8 {
+    const compile_step = b.step("nasm", "compile nasm source");
+
+    var outputSources: [nasm_sources.len][]const u8 = undefined;
+    for (nasm_sources, 0..) |src, idx| {
+        const out = replaceExtension(b, src, ".o");
+        const create_bin = b.addSystemCommand(&.{ "nasm", "-f", "elf32", src, "-o", out });
+        outputSources[idx] = out;
+
+        compile_step.dependOn(&create_bin.step);
+    }
+
+    b.default_step.dependOn(compile_step);
+    return outputSources;
 }
