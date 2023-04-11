@@ -1,7 +1,7 @@
-const PICM = 0x20; // master pci
-const PICS = 0xA0; // slave pci
-const PICM_DATA = PICM + 1;
-const PICS_DATA = PICS + 1;
+const PICM_COMMAND = 0x20; // master pci
+const PICS_COMMAND = 0xA0; // slave pci
+const PICM_DATA = PICM_COMMAND + 1;
+const PICS_DATA = PICS_COMMAND + 1;
 
 const EOI: u8 = 0x20; // end of interrupt
 
@@ -14,17 +14,16 @@ const write = @import("../drivers/vga.zig").write;
 // if it was from the slave pci, both neet be sent eoi
 pub fn sendEoi(irq: usize) void {
     if (irq >= 8) {
-        out(PICS, EOI);
+        out(PICS_COMMAND, EOI);
     }
-    out(PICM, EOI);
+    out(PICM_COMMAND, EOI);
 }
 
-// FIXME
 pub fn remapPic(master_offset: u8, slave_offset: u8) void {
     // start init sequence in cascade mode
     // makes pics wait for 3 initialization words on its data ports
-    out(PICM, @as(u8, 0x11));
-    out(PICS, @as(u8, 0x11));
+    out(PICM_COMMAND, @as(u8, 0x11));
+    out(PICS_COMMAND, @as(u8, 0x11));
     // set master and slave offsets
     out(PICM_DATA, master_offset);
     out(PICS_DATA, slave_offset);
