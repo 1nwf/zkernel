@@ -4,6 +4,7 @@ const int = @import("interrupts.zig");
 const Context = @import("interrupts.zig").Context;
 const sendEoi = @import("pic.zig").sendEoi;
 
+// TODO: queue interrupts instead of handling them immediately
 export fn irq_handler(ctx: Context) void {
     const handler = int.interrupt_handlers[ctx.err_code];
     handler(ctx);
