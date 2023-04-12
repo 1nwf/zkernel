@@ -17,18 +17,12 @@ const HEAP_SIZE: u32 = 108 * 1024; // 100 Kib
 const HEAP_END = HEAP_START + HEAP_SIZE;
 
 const BootInfo = struct { mapAddr: u32, size: u32 };
-
-pub var bootInfo = BootInfo{ .mapAddr = 0, .size = 0 };
-export fn main(bootInfoAddr: u32) void {
+export fn main(bootInfo: *BootInfo) void {
     int.init();
 
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
-    vga.writeln("boot info addr {x}", .{bootInfoAddr});
-
-    bootInfo = @intToPtr(*BootInfo, bootInfoAddr).*;
-
-    vga.writeln("ptr is {}", .{bootInfo});
+    vga.writeln("boot info {}", .{bootInfo});
     var map = @intToPtr([]mem.SMAPEntry, bootInfo.mapAddr);
 
     for (0..bootInfo.size) |i| {
