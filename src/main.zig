@@ -1,5 +1,5 @@
 const vga = @import("drivers/vga.zig");
-const int = @import("interrupts/idt.zig");
+const int = @import("interrupts/interrupts.zig");
 const timer = @import("interrupts/timer.zig");
 const heap = @import("heap/heap.zig");
 const pg = @import("cpu/paging/paging.zig");
@@ -21,7 +21,6 @@ const BootInfo = struct { mapAddr: u32, size: u32 };
 pub var bootInfo = BootInfo{ .mapAddr = 0, .size = 0 };
 export fn main(bootInfoAddr: u32) void {
     int.init();
-    int.load();
 
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 

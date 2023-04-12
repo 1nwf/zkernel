@@ -1,4 +1,4 @@
-const int = @import("idt.zig");
+const int = @import("interrupts.zig");
 const out = @import("../io.zig").out;
 const in = @import("../io.zig").in;
 const write = @import("../drivers/vga.zig").write;

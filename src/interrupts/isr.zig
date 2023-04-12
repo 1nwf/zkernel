@@ -1,4 +1,4 @@
-const int = @import("idt.zig");
+const int = @import("interrupts.zig");
 const writeln = @import("../drivers/vga.zig").writeln;
 
 export fn isr_handler(ctx: int.Context) void {
