@@ -51,7 +51,8 @@ pub fn build(b: *std.Build) void {
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
-    exe.install();
+    std.Build.installArtifact(b, exe);
+    // exe.install();
 
     const bin = exe.addObjCopy(.{ .basename = "kernel.bin", .format = .bin });
     const install_step = b.addInstallBinFile(bin.getOutputSource(), bin.basename);
