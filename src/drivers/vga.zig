@@ -1,13 +1,13 @@
 const cursor = @import("cursor.zig");
-// vga text buffer
-const buffer = @intToPtr([*]volatile Char, 0xb8000);
-const max_height = 25;
-const max_width = 80;
-
 const std = @import("std");
 const Writer = std.io.Writer;
 const format = std.fmt.format;
+
+// vga text buffer
+const buffer = @intToPtr([*]volatile Char, 0xb8000);
 pub const VGAWriter = Writer(*Screen, error{}, writeFn);
+const max_height = 25;
+const max_width = 80;
 
 pub const Screen = @This();
 var screen: Screen = undefined;
