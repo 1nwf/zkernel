@@ -16,17 +16,19 @@ var HEAP_START: u32 = 0x10000;
 const HEAP_SIZE: u32 = 108 * 1024; // 100 Kib
 const HEAP_END = HEAP_START + HEAP_SIZE;
 
-const BootInfo = struct { mapAddr: u32, size: u32 };
-export fn main(bootInfo: *BootInfo) void {
+const BootInfo = struct { map_addr: u32, map_length: u32 };
+export fn main(bootInfo: *BootInfo) noreturn {
     int.init();
 
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
     vga.writeln("boot info {}", .{bootInfo});
-    var map = @intToPtr([]mem.SMAPEntry, bootInfo.mapAddr);
+    var mem_map = @intToPtr([]mem.SMAPEntry, bootInfo.map_addr);
+    mem_map.len = bootInfo.map_length;
 
-    for (0..bootInfo.size) |i| {
-        vga.writeln("{}", .{map[i]});
+    var frame_alloc = pg.FrameAllocator.init(mem_map, HEAP_START);
+    for (frame_alloc.frames) |frame| {
+        vga.write("[{} - {}] - ", .{ frame.start, frame.end });
     }
 
     halt();
