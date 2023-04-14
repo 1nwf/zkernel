@@ -1,3 +1,4 @@
+pub const FrameAllocator = @import("frame_allocator.zig").FrameAllocator;
 pub fn enable_paging() void {
     asm volatile (
         \\ mov %%cr0, %%eax
@@ -9,10 +10,9 @@ pub fn enable_paging() void {
 }
 
 pub fn isEnabled() bool {
-    var cr0: u32 = 0;
-    asm volatile (
+    const cr0 = asm volatile (
         \\ mov %%cr0, %[cr0]
-        : [cr0] "={eax}" (cr0),
+        : [cr0] "={eax}" (-> u32),
     );
 
     return (cr0 >> 31) == 1;
@@ -20,12 +20,12 @@ pub fn isEnabled() bool {
 
 // NOTE: address that caused page fault is stored in the `cr2` register
 
-fn pageFaultHandler() void {}
+pub fn pageFaultHandler() void {}
 
 // NOTE: in protected mode, two level paging is used
 // an address is first translated from a logical --> linear via segmentation
 // then it is translated from linear --> physical via paging
-// the active page directory is stored in the cr3
+// the active page directory is stored in the cr3 register
 // page directory consists of entries that point to page tables
 // page tables consist of entries that point to 4 Kib phsyical frames
 // both page directory and table consist of 1024 4-byte entries
@@ -59,7 +59,6 @@ pub const PTE = packed struct {
     global: u1,
     // ignored
     _: u3,
-
     address: u20,
 };
 
