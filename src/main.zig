@@ -4,11 +4,22 @@ const timer = @import("interrupts/timer.zig");
 const heap = @import("heap/heap.zig");
 const pg = @import("cpu/paging/paging.zig");
 const mem = @import("cpu/paging/memmap.zig");
+const std = @import("std");
 
 fn halt() noreturn {
     asm volatile ("sti");
     while (true) {
         asm volatile ("hlt");
+    }
+}
+
+pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
+    _ = ret_addr;
+    _ = error_return_trace;
+
+    vga.writeln("panic: {s}", .{msg});
+    while (true) {
+        asm volatile ("nop");
     }
 }
 
@@ -26,10 +37,10 @@ export fn main(bootInfo: *BootInfo) noreturn {
     var mem_map = @intToPtr([]mem.SMAPEntry, bootInfo.map_addr);
     mem_map.len = bootInfo.map_length;
 
+    vga.writeln("mem_map: {any}", .{mem_map});
+
     var frame_alloc = pg.FrameAllocator.init(mem_map, HEAP_START);
-    for (frame_alloc.frames) |frame| {
-        vga.write("[{} - {}] - ", .{ frame.start, frame.end });
-    }
+    _ = frame_alloc;
 
     halt();
 }
