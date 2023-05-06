@@ -19,7 +19,10 @@ pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_
 
     vga.writeln("panic: {s}", .{msg});
     while (true) {
-        asm volatile ("nop");
+        asm volatile (
+            \\ cli
+            \\ hlt
+        );
     }
 }
 
