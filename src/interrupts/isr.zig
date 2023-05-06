@@ -11,20 +11,10 @@ pub export fn isr_common() callconv(.Naked) void {
         \\ pusha
         \\ mov %%ds, %%ax
         \\ push %%eax // push data segment
-        \\ mov $0x10 , %%ax // gdt data segment index
-        \\
-        \\ mov %%ax, %%ds
-        \\ mov %%ax, %%es
-        \\ mov %%ax, %%gs
-        \\ mov %%ax, %%fs
         \\
         \\ call isr_handler
         \\
         \\ pop %%eax
-        \\ mov  %%ax, %%ds
-        \\ mov  %%ax, %%es
-        \\ mov  %%ax, %%gs
-        \\ mov  %%ax, %%fs
         \\ popa
         \\ add $8, %%esp
         \\ sti
