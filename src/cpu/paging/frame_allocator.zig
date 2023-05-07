@@ -1,5 +1,6 @@
 const memmap = @import("memmap.zig");
 const util = @import("../../util.zig");
+const vga = @import("root").vga;
 
 const std = @import("std");
 
@@ -21,11 +22,13 @@ pub const Frame = struct {
 };
 
 pub const FrameAllocator = struct {
-    start: *allowzero Frame,
+    start: ?*allowzero Frame = null,
     count: usize = 0,
 
-    pub fn init(map: []memmap.SMAPEntry) FrameAllocator {
-        var frame = FrameAllocator{ .start = undefined, .count = 0 };
+    const Self = @This();
+
+    pub fn init(map: []memmap.SMAPEntry) Self {
+        var frame = Self{};
 
         for (map) |region| {
             if (region.length < PAGE_SIZE) {
@@ -34,25 +37,28 @@ pub const FrameAllocator = struct {
 
             var prev_frame: ?*allowzero Frame = null;
 
-            var iter = util.stepBy(@intCast(usize, region.base), @intCast(usize, region.base + region.length), PAGE_SIZE);
+            var iter = util.stepBy(region.base, region.base + region.length, PAGE_SIZE);
+
             while (iter.next()) |val| {
                 const end = val + PAGE_SIZE - 1;
                 if (end > (region.base + region.length)) {
                     break;
                 }
-                var f = @intToPtr(*allowzero Frame, val);
+
+                var f = @intToPtr(*allowzero Frame, @truncate(usize, val));
                 f.size = PAGE_SIZE;
 
-                if (prev_frame) |prev| {
-                    prev.next = f;
-                } else {
+                if (frame.start == null) {
                     frame.start = f;
+                } else if (prev_frame) |prev| {
+                    prev.next = f;
                 }
-                prev_frame = f;
 
+                prev_frame = f;
                 frame.count += 1;
             }
         }
+
         return frame;
     }
 };
