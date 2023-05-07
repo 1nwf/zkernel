@@ -1,6 +1,9 @@
-const memap = @import("memmap.zig");
+const memmap = @import("memmap.zig");
 const util = @import("../../util.zig");
 
+const std = @import("std");
+
+const PAGE_SIZE = 4096;
 pub const MemRegion = struct {
     start: u64,
     end: u64,
@@ -9,23 +12,47 @@ pub const MemRegion = struct {
     }
 };
 
+pub const Frame = struct {
+    size: usize,
+    next: ?*allowzero Frame,
+    fn init(size: usize, next: ?*Frame) Frame {
+        return Frame{ .size = size, .next = next };
+    }
+};
+
 pub const FrameAllocator = struct {
-    frames: []MemRegion,
-    pub fn init(memoryMap: []memap.SMAPEntry, frameAddr: usize) FrameAllocator {
-        var frames = @intToPtr([]MemRegion, frameAddr);
+    start: *allowzero Frame,
+    count: usize = 0,
 
-        var count: usize = 0;
-        for (memoryMap) |region| {
-            var step_iter = util.stepBy(region.base, region.length, 4096 * 1024);
+    pub fn init(map: []memmap.SMAPEntry) FrameAllocator {
+        var frame = FrameAllocator{ .start = undefined, .count = 0 };
 
-            while (step_iter.next()) |val| {
-                const v = val / 1024;
-                frames[count] = MemRegion.init(v, v + 4096);
-                count += 1;
+        for (map) |region| {
+            if (region.length < PAGE_SIZE) {
+                continue;
+            }
+
+            var prev_frame: ?*allowzero Frame = null;
+
+            var iter = util.stepBy(@intCast(usize, region.base), @intCast(usize, region.base + region.length), PAGE_SIZE);
+            while (iter.next()) |val| {
+                const end = val + PAGE_SIZE - 1;
+                if (end > (region.base + region.length)) {
+                    break;
+                }
+                var f = @intToPtr(*allowzero Frame, val);
+                f.size = PAGE_SIZE;
+
+                if (prev_frame) |prev| {
+                    prev.next = f;
+                } else {
+                    frame.start = f;
+                }
+                prev_frame = f;
+
+                frame.count += 1;
             }
         }
-
-        frames.len = count;
-        return FrameAllocator{ .frames = frames };
+        return frame;
     }
 };

@@ -13,10 +13,7 @@ fn halt() noreturn {
     }
 }
 
-pub fn panic(msg: []const u8, error_return_trace: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
-    _ = ret_addr;
-    _ = error_return_trace;
-
+pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     vga.writeln("panic: {s}", .{msg});
     while (true) {
         asm volatile (
@@ -33,7 +30,6 @@ const HEAP_END = HEAP_START + HEAP_SIZE;
 const BootInfo = struct { map_addr: u32, map_length: u32 };
 export fn main(bootInfo: *BootInfo) noreturn {
     int.init();
-
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
     vga.writeln("boot info {}", .{bootInfo});
@@ -42,8 +38,9 @@ export fn main(bootInfo: *BootInfo) noreturn {
 
     vga.writeln("mem_map: {any}", .{mem_map});
 
-    var frame_alloc = pg.FrameAllocator.init(mem_map, HEAP_START);
-    _ = frame_alloc;
+    var frame_alloc = pg.FrameAllocator.init(mem_map);
+
+    vga.writeln("frame count = {}", .{frame_alloc.count});
 
     halt();
 }
