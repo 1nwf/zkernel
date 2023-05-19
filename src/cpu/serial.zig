@@ -1,3 +1,8 @@
+const std = @import("std");
+const format = std.fmt.format;
+const Writer = std.io.Writer;
+const SerialWriter = Writer(void, error{}, writeFn);
+
 const io = @import("../io.zig");
 const vga = @import("root").vga;
 /// COM1
@@ -10,8 +15,6 @@ const INT_ENABLE = 1;
 // LINE STATUS Register
 const LSR = 5;
 const IRQ_LINE = 4; // for com ports 1 and 3
-
-const Serial = @This();
 
 pub fn init() void {
     // set DLAB (Divisor Latch Access Bit)
@@ -29,10 +32,22 @@ fn transmit_empty() bool {
     return (data & 0x20) != 0;
 }
 
-pub fn write(str: []const u8) void {
+fn writeFn(_: void, str: []const u8) !usize {
     while (!transmit_empty()) {}
 
     for (str) |char| {
         io.out(PORT, char);
     }
+
+    io.out(PORT, @as(u8, '\n'));
+
+    return str.len;
+}
+
+fn writer() SerialWriter {
+    return .{ .context = {} };
+}
+
+pub fn write(comptime str: []const u8, args: anytype) void {
+    format(writer(), str, args) catch {};
 }

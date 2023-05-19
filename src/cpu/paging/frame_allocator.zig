@@ -1,5 +1,6 @@
 const memmap = @import("memmap.zig");
 const util = @import("../../util.zig");
+const serial = @import("root").serial;
 const vga = @import("root").vga;
 
 const std = @import("std");
@@ -60,5 +61,24 @@ pub const FrameAllocator = struct {
         }
 
         return frame;
+    }
+
+    pub fn alloc(self: *Self) !*allowzero anyopaque {
+        if (self.start) |frame| {
+            self.start = frame.next;
+            self.count -= 1;
+
+            return frame;
+        }
+
+        return error.OutOfMemory;
+    }
+
+    pub fn free(self: *Self, ptr: *anyopaque) void {
+        var frame = @ptrCast(*allowzero Frame, ptr);
+        frame.size = PAGE_SIZE;
+        frame.next = self.start;
+        self.start = frame;
+        self.count += 1;
     }
 };

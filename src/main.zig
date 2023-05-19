@@ -1,4 +1,6 @@
-const vga = @import("drivers/vga.zig");
+pub const vga = @import("drivers/vga.zig");
+pub const serial = @import("cpu/serial.zig");
+
 const int = @import("interrupts/interrupts.zig");
 const timer = @import("interrupts/timer.zig");
 const heap = @import("heap/heap.zig");
@@ -16,15 +18,12 @@ fn halt() noreturn {
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     vga.writeln("panic: {s}", .{msg});
     while (true) {
-        asm volatile (
-            \\ cli
-            \\ hlt
-        );
+        asm volatile ("cli");
     }
 }
 
 var HEAP_START: u32 = 0x10000;
-const HEAP_SIZE: u32 = 108 * 1024; // 100 Kib
+const HEAP_SIZE: u32 = 100 * 1024; // 100 Kib
 const HEAP_END = HEAP_START + HEAP_SIZE;
 
 const BootInfo = struct { map_addr: u32, map_length: u32 };
@@ -36,11 +35,11 @@ export fn main(bootInfo: *BootInfo) noreturn {
     var mem_map = @intToPtr([]mem.SMAPEntry, bootInfo.map_addr);
     mem_map.len = bootInfo.map_length;
 
-    vga.writeln("mem_map: {any}", .{mem_map});
+    serial.init();
+    serial.write("serial port initialized", .{});
 
-    var frame_alloc = pg.FrameAllocator.init(mem_map);
-
-    vga.writeln("frame count = {}", .{frame_alloc.count});
+    var frame = pg.FrameAllocator.init(mem_map);
+    _ = frame.alloc() catch unreachable;
 
     halt();
 }
