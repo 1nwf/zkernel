@@ -1,7 +1,7 @@
 kernel_path = zig-out/bin/kernel.bin
 
 run: build
-	qemu-system-i386 -drive format=raw,file=os-image.bin
+	qemu-system-i386 -drive format=raw,file=os-image.bin -serial stdio
 
 build_kernel:
 	zig build
@@ -16,3 +16,8 @@ clean:
 	rm -rf bootloader/zig-out/ bootloader/zig-cache/
 
 	
+monitor:
+	qemu-system-i386 -drive format=raw,file=os-image.bin -d int,guest_errors -no-reboot -no-shutdown -monitor stdio
+
+debug: build
+	qemu-system-i386 -drive format=raw,file=os-image.bin -s -S
