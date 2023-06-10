@@ -77,6 +77,9 @@ pub fn clearScreen(self: *Screen) void {
 fn newLine(self: *Screen) void {
     self.height += 1;
     self.width = 0;
+    if (self.height >= max_height) {
+        self.scroll();
+    }
 }
 
 pub fn scroll(self: *Screen) void {
