@@ -26,9 +26,17 @@ const HEAP_END = HEAP_START + HEAP_SIZE;
 
 const BootInfo = struct { map_addr: u32, map_length: u32 };
 export fn main(bootInfo: *BootInfo) noreturn {
-    _ = bootInfo;
     int.init();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
+
+    vga.writeln("boot info: {}", .{bootInfo});
+
+    var mem_map = @intToPtr([]mem.SMAPEntry, bootInfo.map_addr);
+    mem_map.len = bootInfo.map_length;
+
+    for (mem_map) |entry| {
+        vga.writeln("mem map entry: {x} ... {x}", .{ entry.base, entry.length });
+    }
 
     serial.init();
     serial.write("serial port initialized", .{});
