@@ -3,8 +3,6 @@ const util = @import("../../util.zig");
 const serial = @import("root").serial;
 const vga = @import("root").vga;
 
-const std = @import("std");
-
 const PAGE_SIZE = 4096;
 pub const MemRegion = struct {
     start: u64,
@@ -24,7 +22,7 @@ pub const Frame = struct {
 
 pub const FrameAllocator = struct {
     start: ?*allowzero Frame = null,
-    count: usize = 0,
+    count: u64 = 0,
 
     const Self = @This();
 
