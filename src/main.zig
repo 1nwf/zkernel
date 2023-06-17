@@ -15,6 +15,12 @@ inline fn halt() noreturn {
     }
 }
 
+pub const std_options = struct {
+    pub fn logFn(comptime _: std.log.Level, comptime _: @Type(.EnumLiteral), comptime format: []const u8, args: anytype) void {
+        vga.writeln(format, args);
+    }
+};
+
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     serial.write("panic: {s}", .{msg});
     halt();
@@ -29,6 +35,8 @@ export fn main(bootInfo: *BootInfo) noreturn {
     int.init();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
+    std.log.info("std.log.info()", .{});
+
     vga.writeln("boot info: {}", .{bootInfo});
 
     for (bootInfo.mem_map) |entry| {
@@ -37,5 +45,11 @@ export fn main(bootInfo: *BootInfo) noreturn {
 
     serial.init();
     serial.write("serial port initialized", .{});
+
+    var frame_alloc = pg.FrameAllocator.init(bootInfo.mem_map);
+
+    var frame = frame_alloc.alloc() catch halt();
+    vga.writeln("frame {}", .{frame});
+
     halt();
 }
