@@ -22,14 +22,14 @@ pub const Frame = struct {
 
 pub const FrameAllocator = struct {
     start: ?*allowzero Frame = null,
-    count: u64 = 0,
+    count: u32 = 0,
 
     const Self = @This();
 
     pub fn init(map: []memmap.SMAPEntry) Self {
         var frame = Self{};
 
-        for (map) |region| {
+        for (map) |*region| {
             if (region.length < PAGE_SIZE) {
                 continue;
             }
