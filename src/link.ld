@@ -3,18 +3,19 @@ SECTIONS {
 	kernel_start = .; 
     .text : {
 		KEEP(*(.entry))
+        *(.text)
         *(.text*)
     }
 
-    .rodata : ALIGN(4K) {
+    .rodata : ALIGN(4) {
          *(.rodata, .rodata.*)
     }
 
-	.data : ALIGN(4K) {
+	.data : ALIGN(4) {
 		*(.data)
 	}
 
-	.bss : ALIGN(4K) {
+	.bss : ALIGN(4)  {
 		*(.bss)
 	}
 
