@@ -1,7 +1,6 @@
 const memmap = @import("memmap.zig");
 const util = @import("../../util.zig");
 const serial = @import("root").serial;
-const std = @import("std");
 const vga = @import("root").vga;
 
 const PAGE_SIZE = 4096;
@@ -23,11 +22,11 @@ pub const Frame = struct {
 
 pub const FrameAllocator = struct {
     start: ?*allowzero Frame = null,
-    count: u64 = 0,
+    count: usize = 0,
 
     const Self = @This();
 
-    pub noinline fn init(map: []memmap.SMAPEntry) Self {
+    pub noinline fn init(map: []memmap.MemMapEntry) Self {
         var frame = Self{};
 
         for (map) |*region| {

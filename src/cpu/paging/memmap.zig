@@ -13,7 +13,7 @@ const RegionType = enum {
     Available,
 };
 
-pub const SMAPEntry = extern struct {
+pub const MemMapEntry = extern struct {
     base: u64,
     length: u64,
     type: u32,

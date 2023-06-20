@@ -30,14 +30,12 @@ const HEAP_START: u32 = 0x10000;
 const HEAP_SIZE: u32 = 100 * 1024; // 100 Kib
 const HEAP_END = HEAP_START + HEAP_SIZE;
 
-const BootInfo = struct { mem_map: []mem.SMAPEntry };
+const BootInfo = struct { mem_map: []mem.MemMapEntry };
 export fn main(bootInfo: *BootInfo) noreturn {
     int.init();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
     std.log.info("std.log.info()", .{});
-
-    vga.writeln("boot info: {}", .{bootInfo});
 
     for (bootInfo.mem_map) |entry| {
         vga.writeln("mem map entry: {x} ... {x}", .{ entry.base, entry.length });
@@ -47,6 +45,7 @@ export fn main(bootInfo: *BootInfo) noreturn {
     serial.write("serial port initialized", .{});
 
     var frame_alloc = pg.FrameAllocator.init(bootInfo.mem_map);
+    vga.writeln("frame count: {}", .{frame_alloc.count});
 
     var frame = frame_alloc.alloc() catch halt();
     vga.writeln("frame {}", .{frame});
