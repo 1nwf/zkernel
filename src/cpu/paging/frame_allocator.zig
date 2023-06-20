@@ -1,6 +1,7 @@
 const memmap = @import("memmap.zig");
 const util = @import("../../util.zig");
 const serial = @import("root").serial;
+const std = @import("std");
 const vga = @import("root").vga;
 
 const PAGE_SIZE = 4096;
@@ -22,11 +23,11 @@ pub const Frame = struct {
 
 pub const FrameAllocator = struct {
     start: ?*allowzero Frame = null,
-    count: u32 = 0,
+    count: u64 = 0,
 
     const Self = @This();
 
-    pub fn init(map: []memmap.SMAPEntry) Self {
+    pub noinline fn init(map: []memmap.SMAPEntry) Self {
         var frame = Self{};
 
         for (map) |*region| {
@@ -36,7 +37,8 @@ pub const FrameAllocator = struct {
 
             var prev_frame: ?*allowzero Frame = null;
 
-            var iter = util.stepBy(region.base, region.base + region.length, PAGE_SIZE);
+            var region_end = region.base + region.length;
+            var iter = util.stepBy(u64, region.base, region_end, PAGE_SIZE);
 
             while (iter.next()) |val| {
                 const end = val + PAGE_SIZE - 1;
@@ -61,7 +63,7 @@ pub const FrameAllocator = struct {
         return frame;
     }
 
-    pub fn alloc(self: *Self) !*allowzero anyopaque {
+    pub inline fn alloc(self: *Self) !*allowzero anyopaque {
         if (self.start) |frame| {
             self.start = frame.next;
             self.count -= 1;
@@ -72,7 +74,7 @@ pub const FrameAllocator = struct {
         return error.OutOfMemory;
     }
 
-    pub fn free(self: *Self, ptr: *anyopaque) void {
+    pub inline fn free(self: *Self, ptr: *anyopaque) void {
         var frame = @ptrCast(*allowzero Frame, ptr);
         frame.size = PAGE_SIZE;
         frame.next = self.start;
