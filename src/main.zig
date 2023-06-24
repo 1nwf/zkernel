@@ -31,10 +31,18 @@ const HEAP_SIZE: u32 = 100 * 1024; // 100 Kib
 const HEAP_END = HEAP_START + HEAP_SIZE;
 
 const BootInfo = struct { mem_map: []mem.MemMapEntry };
+
+pub extern var kernel_start: usize;
+pub extern var kernel_end: usize;
 export fn main(bootInfo: *BootInfo) noreturn {
     int.init();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
+    kernel_start = @ptrToInt(&kernel_start);
+    kernel_end = @ptrToInt(&kernel_end);
+
+    vga.writeln("kernel start: 0x{x}", .{kernel_start});
+    vga.writeln("kernel end: 0x{x}", .{kernel_end});
     std.log.info("std.log.info()", .{});
 
     for (bootInfo.mem_map) |entry| {
@@ -46,9 +54,6 @@ export fn main(bootInfo: *BootInfo) noreturn {
 
     var frame_alloc = pg.FrameAllocator.init(bootInfo.mem_map);
     vga.writeln("frame count: {}", .{frame_alloc.count});
-
-    var frame = frame_alloc.alloc() catch halt();
-    vga.writeln("frame {}", .{frame});
 
     halt();
 }
