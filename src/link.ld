@@ -1,5 +1,5 @@
 SECTIONS {
-    . = 0x1000;
+    . = 0x100000;
 	kernel_start = .; 
     .text : {
 		KEEP(*(.entry))
