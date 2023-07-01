@@ -36,24 +36,21 @@ pub extern var kernel_start: usize;
 pub extern var kernel_end: usize;
 export fn main(bootInfo: *BootInfo) noreturn {
     int.init();
+    serial.init();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
     kernel_start = @ptrToInt(&kernel_start);
     kernel_end = @ptrToInt(&kernel_end);
 
-    vga.writeln("kernel start: 0x{x}", .{kernel_start});
-    vga.writeln("kernel end: 0x{x}", .{kernel_end});
-    std.log.info("std.log.info()", .{});
+    serial.writeln("kernel start: 0x{x}", .{kernel_start});
+    serial.writeln("kernel end: 0x{x}", .{kernel_end});
 
     for (bootInfo.mem_map) |entry| {
         vga.writeln("mem map entry: {x} ... {x}", .{ entry.base, entry.length });
     }
 
-    serial.init();
-    serial.write("serial port initialized", .{});
-
     var frame_alloc = pg.FrameAllocator.init(bootInfo.mem_map);
-    vga.writeln("frame count: {}", .{frame_alloc.count});
+    serial.writeln("frame count: {}", .{frame_alloc.count});
 
     halt();
 }

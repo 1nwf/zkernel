@@ -39,8 +39,6 @@ fn writeFn(_: void, str: []const u8) !usize {
         io.out(PORT, char);
     }
 
-    io.out(PORT, @as(u8, '\n'));
-
     return str.len;
 }
 
@@ -50,4 +48,9 @@ fn writer() SerialWriter {
 
 pub fn write(comptime str: []const u8, args: anytype) void {
     format(writer(), str, args) catch {};
+}
+
+pub fn writeln(comptime str: []const u8, args: anytype) void {
+    format(writer(), str, args) catch {};
+    io.out(PORT, @as(u8, '\n'));
 }
