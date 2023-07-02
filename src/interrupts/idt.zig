@@ -26,14 +26,14 @@ pub const Entry = packed struct {
     }
     pub fn init(handler: u32) Entry {
         return Entry{
-            .isr_low = @truncate(u16, (handler & 0xFFFF)),
+            .isr_low = @truncate((handler & 0xFFFF)),
             .selector = 0x18, // index of code segment in gdt
             .reserved = 0,
             // --------------------------------------------------------------
             // present: 1 | DPL: 0 | Gate Type: 0xE (32 bit interrupt gate) |
             // --------------------------------------------------------------
             .attributes = 0x8E,
-            .isr_high = @truncate(u16, (handler >> 16)),
+            .isr_high = @truncate((handler >> 16)),
         };
     }
 };

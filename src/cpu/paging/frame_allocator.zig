@@ -51,7 +51,7 @@ pub const FrameAllocator = struct {
                     break;
                 }
 
-                var f = @intToPtr(*allowzero Frame, @truncate(usize, val));
+                var f: *allowzero Frame = @ptrFromInt(@as(usize, @truncate(val)));
                 f.size = PAGE_SIZE;
 
                 if (frame.start == null) {
@@ -80,7 +80,7 @@ pub const FrameAllocator = struct {
     }
 
     pub fn free(self: *Self, ptr: *anyopaque) void {
-        var frame = @ptrCast(*allowzero Frame, ptr);
+        var frame: *allowzero Frame = @ptrCast(ptr);
         frame.size = PAGE_SIZE;
         frame.next = self.start;
         self.start = frame;

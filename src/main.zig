@@ -39,8 +39,8 @@ export fn main(bootInfo: *BootInfo) noreturn {
     serial.init();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
-    kernel_start = @ptrToInt(&kernel_start);
-    kernel_end = @ptrToInt(&kernel_end);
+    kernel_start = @intFromPtr(&kernel_start);
+    kernel_end = @intFromPtr(&kernel_end);
 
     serial.writeln("kernel start: 0x{x}", .{kernel_start});
     serial.writeln("kernel end: 0x{x}", .{kernel_end});
@@ -54,3 +54,5 @@ export fn main(bootInfo: *BootInfo) noreturn {
 
     halt();
 }
+
+// TODO: Higher half kernel

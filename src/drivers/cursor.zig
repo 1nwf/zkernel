@@ -35,8 +35,8 @@ pub fn disableCursor() void {
 }
 
 pub fn setLocation(pos: u16) void {
-    const upper: u8 = @truncate(u8, (pos & 0xFF00) >> 8);
-    const lower: u8 = @truncate(u8, pos & 0x00FF);
+    const upper: u8 = @truncate((pos & 0xFF00) >> 8);
+    const lower: u8 = @truncate(pos & 0x00FF);
 
     sendVgaData(cursor_location_high, upper);
     sendVgaData(cursor_location_low, lower);

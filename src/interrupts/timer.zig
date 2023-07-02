@@ -5,9 +5,9 @@ const write = @import("../drivers/vga.zig").write;
 
 pub fn init_timer(freq: u32) void {
     int.setIrqHandler(0, timer_handler);
-    const divisor: u16 = @truncate(u16, 1193180 / freq);
-    const low = @truncate(u8, divisor / 0xFF);
-    const high = @truncate(u8, (divisor >> 8) & 0xFF);
+    const divisor: u16 = @truncate(1193180 / freq);
+    const low: u8 = @truncate(divisor / 0xFF);
+    const high: u8 = @truncate((divisor >> 8) & 0xFF);
 
     out(0x40, low);
     out(0x40, high);

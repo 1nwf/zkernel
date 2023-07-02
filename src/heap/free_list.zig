@@ -15,13 +15,13 @@ pub const Node = struct {
     fn take(self: *Node, comptime T: type) Tuple(&.{ ?*Node, *T }) {
         // adjust the size to make sure it fits a List Node
         const size = @max(@sizeOf(T), Node.NodeSize);
-        const value_ptr = @ptrCast(*T, self);
+        const value_ptr: *T = @ptrCast(self);
         if (self.size < size) {
             return .{ null, value_ptr };
         }
         const free_space = self.size - size;
         var next = self.next;
-        const new_node = @intToPtr(*Node, self.address() + size);
+        const new_node: *Node = @ptrFromInt(self.address() + size);
         new_node.* = Node.init(free_space, null);
         new_node.next = next;
 
@@ -29,7 +29,7 @@ pub const Node = struct {
     }
 
     inline fn address(self: *Node) usize {
-        return @ptrToInt(self);
+        return @intFromPtr(self);
     }
 
     inline fn end_address(self: *Node) usize {
@@ -60,7 +60,7 @@ heap_size: usize,
 head: ?*Node,
 
 pub fn init(heap_start: usize, heap_size: usize) FreeList {
-    var head = @intToPtr(*Node, heap_start);
+    var head: *Node = @ptrFromInt(heap_start);
     head.* = Node.init(heap_size, null);
     return FreeList{ .heap_start = heap_start, .heap_size = heap_size, .head = head };
 }
@@ -103,7 +103,7 @@ pub fn alloc(self: *FreeList, comptime T: type, value: T) Error!*T {
 pub fn free(self: *FreeList, ptr: anytype) void {
     // size is guaranteed to be at least the size of a list Node
     const size = @max(@sizeOf(@TypeOf(ptr.*)), Node.NodeSize);
-    const node = @ptrCast(*Node, ptr);
+    const node: *Node = @ptrCast(ptr);
     node.* = Node.init(size, null);
     self.insert(node);
 }

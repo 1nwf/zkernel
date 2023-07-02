@@ -16,8 +16,8 @@ pub fn init(heap_start: usize, heap_size: usize) BumpAlloc {
 pub fn alloc(self: *BumpAlloc, comptime T: type, value: T) Error!*T {
     var size: usize = @sizeOf(T);
 
-    var start_addr = @intToPtr(*T, self.next);
-    var end_addr = @ptrToInt(start_addr) + size;
+    var start_addr: *T = @ptrFromInt(self.next);
+    var end_addr = @intFromPtr(start_addr) + size;
 
     if (end_addr > self.heap_end) {
         return Error.OutOfMemory;
