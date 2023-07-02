@@ -1,5 +1,5 @@
 SECTIONS {
-    . = 0x100000;
+    . = 1M;
 	kernel_start = .; 
     .text : {
 		KEEP(*(.entry))
@@ -21,7 +21,6 @@ SECTIONS {
 		*(.bss)
 		*(.bss*)
 	}
-
 
 	kernel_end = .;
 }
