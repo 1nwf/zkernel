@@ -1,6 +1,7 @@
 kernel_path = zig-out/bin/kernel.bin
 qemu_args = -drive format=raw,file=os-image.bin -m 1G
 bios = /Users/nwf/Desktop/oss/cpp/seabios/out/bios.bin
+kernel_elf = zig-out/bin/zkernel
 
 run: build
 	qemu-system-i386 $(qemu_args) -serial stdio 
@@ -36,3 +37,19 @@ dump:
 
 sector_size:
 	@echo "kernel sector size:" $$((($(shell stat -f%"z" $(kernel_path)) / 512) + 1))
+
+
+
+grub_build: build_kernel
+	cp $(kernel_elf) iso/boot/kernel.elf
+	grub-mkrescue -o iso/os.iso iso/ > /dev/null
+
+grub_run: grub_clean grub_build
+	qemu-system-i386 -boot d -cdrom iso/os.iso 
+
+grub_mon: grub_clean grub_build
+	qemu-system-i386 -boot d -cdrom iso/os.iso -d int,guest_errors -no-reboot -no-shutdown -monitor stdio
+
+grub_clean:
+	rm iso/os.iso
+	rm iso/boot/kernel.elf

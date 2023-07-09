@@ -1,4 +1,5 @@
 pub const vga = @import("drivers/vga.zig");
+const gdt = @import("cpu/gdt.zig");
 pub const serial = @import("cpu/serial.zig");
 
 const int = @import("interrupts/interrupts.zig");
@@ -30,29 +31,15 @@ const HEAP_START: u32 = 0x10000;
 const HEAP_SIZE: u32 = 100 * 1024; // 100 Kib
 const HEAP_END = HEAP_START + HEAP_SIZE;
 
-const BootInfo = struct { mem_map: []mem.MemMapEntry };
+// const BootInfo = struct { mem_map: []mem.MemMapEntry };
 
-pub extern var kernel_start: usize;
-pub extern var kernel_end: usize;
-export fn main(bootInfo: *BootInfo) noreturn {
+export fn main() noreturn {
+    gdt.init();
     int.init();
     serial.init();
     vga.init(.{ .bg = .LightRed, .fg = .White }, .Underline);
 
-    kernel_start = @intFromPtr(&kernel_start);
-    kernel_end = @intFromPtr(&kernel_end);
-
-    serial.writeln("kernel start: 0x{x}", .{kernel_start});
-    serial.writeln("kernel end: 0x{x}", .{kernel_end});
-
-    for (bootInfo.mem_map) |entry| {
-        vga.writeln("mem map entry: {x} ... {x}", .{ entry.base, entry.length });
-    }
-
-    var frame_alloc = pg.FrameAllocator.init(bootInfo.mem_map);
-    serial.writeln("frame count: {}", .{frame_alloc.count});
+    vga.writeln("hello", .{});
 
     halt();
 }
-
-// TODO: Higher half kernel
