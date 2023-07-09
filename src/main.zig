@@ -9,6 +9,8 @@ const pg = @import("cpu/paging/paging.zig");
 const mem = @import("cpu/paging/memmap.zig");
 const std = @import("std");
 
+const boot = @import("boot/mutliboot_header.zig");
+
 inline fn halt() noreturn {
     int.enable();
     while (true) {
@@ -27,13 +29,10 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     halt();
 }
 
-const HEAP_START: u32 = 0x10000;
-const HEAP_SIZE: u32 = 100 * 1024; // 100 Kib
-const HEAP_END = HEAP_START + HEAP_SIZE;
-
 // const BootInfo = struct { mem_map: []mem.MemMapEntry };
 
-export fn main() noreturn {
+export fn main(bootInfo: *boot.MultiBootInfo) noreturn {
+    _ = bootInfo;
     gdt.init();
     int.init();
     serial.init();

@@ -19,5 +19,6 @@ section .text
 _start:
 	mov esp, kernel_stack_end
 	mov ebp, esp
+	push ebx
 	call main
 	jmp $
