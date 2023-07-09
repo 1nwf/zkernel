@@ -16,9 +16,9 @@ SECTIONS {
 
 	.bss :  {
 		*(.bss*)
-		kernel_stack_start = ALIGN(16);
+		kernel_stack_start = ALIGN(4);
 		. += 0x4000;
-		kernel_stack_end = ALIGN(16);
+		kernel_stack_end = ALIGN(4);
 	}
 
 	kernel_end = .;
