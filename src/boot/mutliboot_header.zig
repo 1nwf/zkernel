@@ -1,6 +1,5 @@
 pub const BootDevice = extern struct {
     drive: u8,
-    // Partitions 1, 2, and 3
     p1: u8,
     p2: u8,
     p3: u8,
@@ -63,7 +62,7 @@ pub const MultiBootInfo = extern struct {
     mods_addr: u32,
     symbols: Symbols,
 
-    mmap_length: c_int,
+    mmap_length: u32,
     mmap_addr: [*]MemMapEntry,
 
     drives_length: u32,
@@ -73,7 +72,7 @@ pub const MultiBootInfo = extern struct {
 
     boot_loader_name: [*:0]const u8,
 
-    apm_table: u32, // advanced power management
+    apm_table: u32,
 
     vbe_control_info: u32,
     vbe_mode_info: u32,
@@ -89,5 +88,13 @@ pub const MemMapEntry = extern struct {
     size: u32,
     base_addr: u64,
     length: u64,
-    type: u32,
+    type: MemType,
+};
+
+pub const MemType = enum(u32) {
+    Available = 1,
+    Reserved,
+    ACPI_Reclaimable,
+    NVS,
+    BadRam,
 };

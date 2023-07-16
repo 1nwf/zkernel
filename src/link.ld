@@ -1,6 +1,7 @@
 SECTIONS {
     . = 1M;
 	kernel_start = .; 
+
     .text : {
 		KEEP(*(.multiboot))
         *(.text*)

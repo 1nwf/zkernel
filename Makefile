@@ -40,16 +40,23 @@ sector_size:
 
 
 
-grub_build: build_kernel
+grub_build: 
+	-rm iso/os.iso
 	cp $(kernel_elf) iso/boot/kernel.elf
 	grub-mkrescue -o iso/os.iso iso/ > /dev/null
 
-grub_run: grub_clean grub_build
-	qemu-system-i386 -boot d -cdrom iso/os.iso 
+grub_run: grub_build
+	qemu-system-i386 -boot d -cdrom iso/os.iso -m 128M -serial stdio 
 
-grub_mon: grub_clean grub_build
+grub_mon: grub_build
 	qemu-system-i386 -boot d -cdrom iso/os.iso -d int,guest_errors -no-reboot -no-shutdown -monitor stdio
+
+grub_dbios:
+	qemu-system-i386 -boot d -cdrom iso/os.iso -chardev stdio,id=seabios -device isa-debugcon,iobase=0x402,chardev=seabios -m 512 -bios $(bios)
 
 grub_clean:
 	rm iso/os.iso
 	rm iso/boot/kernel.elf
+
+grub_debug:
+	qemu-system-i386 -boot d -cdrom iso/os.iso -serial stdio -s -S
