@@ -43,7 +43,7 @@ sector_size:
 grub_build: build_kernel
 	-rm iso/os.iso
 	cp $(kernel_elf) iso/boot/kernel.elf
-	grub-mkrescue -o iso/os.iso iso/ > /dev/null
+	grub-mkrescue -o iso/os.iso iso/ 2> /dev/null
 
 grub_run: grub_build
 	qemu-system-i386 -boot d -cdrom iso/os.iso -m 128M -serial stdio 
