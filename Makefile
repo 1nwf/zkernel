@@ -40,7 +40,7 @@ sector_size:
 
 
 
-grub_build: 
+grub_build: build_kernel
 	-rm iso/os.iso
 	cp $(kernel_elf) iso/boot/kernel.elf
 	grub-mkrescue -o iso/os.iso iso/ > /dev/null
