@@ -51,6 +51,9 @@ grub_run: grub_build
 grub_mon: grub_build
 	qemu-system-i386 -boot d -cdrom iso/os.iso -d int,guest_errors -no-reboot -no-shutdown -monitor stdio
 
+grub_mond: grub_build
+	qemu-system-i386 -boot d -cdrom iso/os.iso -d int,guest_errors -no-reboot -no-shutdown -monitor stdio -s -S
+
 grub_dbios:
 	qemu-system-i386 -boot d -cdrom iso/os.iso -chardev stdio,id=seabios -device isa-debugcon,iobase=0x402,chardev=seabios -m 512 -bios $(bios)
 
