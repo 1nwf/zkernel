@@ -2,20 +2,20 @@ SECTIONS {
     . = 1M;
 	kernel_start = .; 
 
-    .text : {
+    .text : ALIGN(4K) {
 		KEEP(*(.multiboot))
         *(.text*)
     }
 
-    .rodata : {
+    .rodata : ALIGN(4K) {
          *(.rodata*)
     }
 
-	.data : {
+	.data : ALIGN(4K) {
 		*(.data)
 	}
 
-	.bss :  {
+	.bss : ALIGN(4K)  {
 		*(.bss*)
 		kernel_stack_start = ALIGN(4);
 		. += 0x4000;
