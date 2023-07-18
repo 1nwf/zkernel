@@ -40,7 +40,7 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     gdt.init();
     int.init();
     serial.init();
-    vga.init(.{ .bg = .LightRed }, .Underline);
+    vga.init(.{}, .Underline);
 
     const mem_aval = 0x00000040;
     vga.writeln("bootloader name: {s}", .{bootInfo.boot_loader_name});
@@ -51,9 +51,10 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     vga.writeln("mmap length: {}", .{mem_map_length});
 
     const memMap: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
+    _ = memMap;
 
-    for (memMap) |entry| {
-        if (entry.type != .Available) continue;
-        std.log.info("0x{x} --> 0x{x}", .{ entry.base_addr, entry.length });
-    }
+    var dir: pg.PageDirectory align(4096) = pg.PageDirectory.init();
+    dir.identityMap();
+    dir.load();
+    pg.enable_paging();
 }
