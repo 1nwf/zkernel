@@ -5,9 +5,9 @@ const PICS_DATA = PICS_COMMAND + 1;
 
 const EOI: u8 = 0x20; // end of interrupt
 
-const io = @import("../io.zig");
-const out = io.out;
-const in = io.in;
+const arch = @import("../arch.zig");
+const out = arch.out;
+const in = arch.in;
 const write = @import("../drivers/vga.zig").write;
 
 // if interrupt was issued by master pci, eoi needs to be only sent to master

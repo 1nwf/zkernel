@@ -1,5 +1,5 @@
 const int = @import("../interrupts/interrupts.zig");
-const in = @import("../io.zig").in;
+const in = @import("../arch.zig").in;
 const write = @import("vga.zig").write;
 
 const unicode = @import("std").unicode;

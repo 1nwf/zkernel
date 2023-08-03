@@ -1,4 +1,4 @@
-const io = @import("../io.zig");
+const io = @import("../arch.zig");
 
 /// address register
 const address: u16 = 0x3D4;

@@ -1,4 +1,5 @@
-const memmap = @import("memmap.zig");
+const boot = @import("../../boot/mutliboot_header.zig");
+const std = @import("std");
 const util = @import("../../util.zig");
 const serial = @import("root").serial;
 const root = @import("root");
@@ -27,28 +28,22 @@ pub const FrameAllocator = struct {
 
     const Self = @This();
 
-    pub fn init(map: []memmap.MemMapEntry) Self {
+    pub fn init(map: []boot.MemMapEntry) Self {
         var frame = Self{};
         const kernel_start = root.kernel_start;
         const kernel_end = root.kernel_end;
 
         for (map) |*region| {
-            if (region.length < PAGE_SIZE) {
-                continue;
-            }
+            if (region.type != boot.MemType.Available or region.length < PAGE_SIZE) continue;
 
             var prev_frame: ?*allowzero Frame = null;
 
-            var region_end = region.base + region.length;
-            var iter = util.stepBy(u64, region.base, region_end, PAGE_SIZE);
+            var region_end = region.base_addr + region.length;
+            var iter = util.stepBy(u64, region.base_addr, region_end, PAGE_SIZE);
 
             while (iter.next()) |val| {
-                const end = val + PAGE_SIZE - 1;
                 if (val >= kernel_start and val <= kernel_end) {
                     continue;
-                }
-                if (end > (region.base + region.length)) {
-                    break;
                 }
 
                 var f: *allowzero Frame = @ptrFromInt(@as(usize, @truncate(val)));
@@ -80,6 +75,7 @@ pub const FrameAllocator = struct {
     }
 
     pub fn free(self: *Self, ptr: *anyopaque) void {
+        std.debug.assert(~(@intFromPtr(ptr) & 0xfff));
         var frame: *allowzero Frame = @ptrCast(ptr);
         frame.size = PAGE_SIZE;
         frame.next = self.start;

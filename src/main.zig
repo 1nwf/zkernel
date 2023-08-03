@@ -1,15 +1,14 @@
 pub const vga = @import("drivers/vga.zig");
-const gdt = @import("cpu/gdt.zig");
-pub const serial = @import("cpu/serial.zig");
+const arch = @import("arch.zig");
+const gdt = arch.gdt;
+pub const serial = arch.serial;
 
 const int = @import("interrupts/interrupts.zig");
 const timer = @import("interrupts/timer.zig");
 const heap = @import("heap/heap.zig");
-const pg = @import("cpu/paging/paging.zig");
-const mem = @import("cpu/paging/memmap.zig");
-const std = @import("std");
-
+const pg = arch.paging;
 const boot = @import("boot/mutliboot_header.zig");
+const std = @import("std");
 
 inline fn halt() noreturn {
     int.enable();
@@ -40,7 +39,7 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     gdt.init();
     int.init();
     serial.init();
-    vga.init(.{}, .Underline);
+    vga.init(.{ .bg = .LightRed }, .Underline);
 
     const mem_aval = 0x00000040;
     vga.writeln("bootloader name: {s}", .{bootInfo.boot_loader_name});

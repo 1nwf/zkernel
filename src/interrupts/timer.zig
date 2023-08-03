@@ -1,6 +1,5 @@
 const int = @import("interrupts.zig");
-const out = @import("../io.zig").out;
-const in = @import("../io.zig").in;
+const arch = @import("../arch.zig");
 const write = @import("../drivers/vga.zig").write;
 
 pub fn init_timer(freq: u32) void {
@@ -9,8 +8,8 @@ pub fn init_timer(freq: u32) void {
     const low: u8 = @truncate(divisor / 0xFF);
     const high: u8 = @truncate((divisor >> 8) & 0xFF);
 
-    out(0x40, low);
-    out(0x40, high);
+    arch.out(0x40, low);
+    arch.out(0x40, high);
 
     interval = freq;
 }
@@ -20,15 +19,15 @@ var interval: u32 = 0;
 
 pub export fn timer_handler(ctx: int.Context) void {
     _ = ctx;
-    ticks += 1;
+    // ticks += 1;
 }
 
 pub fn read_count() u16 {
     var count: u16 = 0;
 
-    out(0x43, @as(u8, 0));
-    var low = in(0x40, u8);
-    var high = in(0x40, u8);
+    arch.out(0x43, @as(u8, 0));
+    var low = arch.in(0x40, u8);
+    var high = arch.in(0x40, u8);
 
     count = high;
     count = (count << 8) | low;
