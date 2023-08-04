@@ -33,7 +33,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .linkage = .static,
     });
-    // exe.strip = true;
+    exe.strip = false;
     exe.setLinkerScriptPath(.{ .path = "src/link.ld" });
 
     const nasm_sources = [_][]const u8{
@@ -43,7 +43,7 @@ pub fn build(b: *std.Build) void {
     const nasm_out = compileNasmSource(b, &nasm_sources);
 
     for (nasm_out) |out| {
-        exe.addObjectFileSource(.{ .path = out });
+        exe.addObjectFile(.{ .path = out });
     }
 
     // This declares intent for the executable to be installed into the
