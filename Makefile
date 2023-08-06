@@ -49,7 +49,7 @@ grub_run: grub_build
 	qemu-system-i386 -boot d -cdrom iso/os.iso -m 128M -serial stdio 
 
 grub_mon: grub_build
-	qemu-system-i386 -boot d -cdrom iso/os.iso -d int,guest_errors -no-reboot -no-shutdown -monitor stdio
+	qemu-system-i386 -boot d -cdrom iso/os.iso -d guest_errors -no-reboot -no-shutdown -monitor stdio
 
 grub_mond: grub_build
 	qemu-system-i386 -boot d -cdrom iso/os.iso -d int,guest_errors -no-reboot -no-shutdown -monitor stdio -s -S
