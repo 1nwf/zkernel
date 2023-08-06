@@ -1,5 +1,5 @@
 pub const vga = @import("drivers/vga.zig");
-const arch = @import("arch.zig");
+const arch = @import("arch");
 const gdt = arch.gdt;
 pub const serial = arch.serial;
 

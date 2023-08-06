@@ -5,7 +5,7 @@ const PICS_DATA = PICS_COMMAND + 1;
 
 const EOI: u8 = 0x20; // end of interrupt
 
-const arch = @import("../arch.zig");
+const arch = @import("arch");
 const out = arch.out;
 const in = arch.in;
 const write = @import("../drivers/vga.zig").write;

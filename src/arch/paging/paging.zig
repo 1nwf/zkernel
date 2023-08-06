@@ -1,4 +1,3 @@
-pub const FrameAllocator = @import("bump_alloc.zig").BumpAllocator;
 var FixedAllocator = @import("allocator.zig").fixed_alloc.allocator();
 const writeln = @import("../serial.zig").writeln;
 

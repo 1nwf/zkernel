@@ -42,6 +42,13 @@ pub fn build(b: *std.Build) void {
 
     const nasm_out = compileNasmSource(b, &nasm_sources);
 
+    const arch = b.addModule("arch", .{
+        .source_file = .{
+            .path = "src/arch.zig",
+        },
+    });
+    exe.addModule("arch", arch);
+
     for (nasm_out) |out| {
         exe.addObjectFile(.{ .path = out });
     }

@@ -1,5 +1,5 @@
 const int = @import("interrupts.zig");
-const arch = @import("../arch.zig");
+const arch = @import("arch");
 const write = @import("../drivers/vga.zig").write;
 
 pub fn init_timer(freq: u32) void {
