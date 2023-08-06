@@ -9,6 +9,7 @@ const heap = @import("heap/heap.zig");
 const pg = arch.paging;
 const boot = @import("boot/mutliboot_header.zig");
 const std = @import("std");
+const pci = @import("drivers/pci/pci.zig");
 
 inline fn halt() noreturn {
     int.enable();
@@ -56,4 +57,5 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     dir.identityMap();
     dir.load();
     pg.enable_paging();
+    pci.init();
 }
