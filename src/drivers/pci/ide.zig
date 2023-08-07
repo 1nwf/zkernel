@@ -1,6 +1,7 @@
+const std = @import("std");
+const log = std.log.scoped(.ide);
 const pci = @import("pci.zig");
 const arch = @import("arch");
-const writeln = @import("root").serial.writeln;
 
 const Status = enum(u8) {
     Busy = 0x80, // Busy
@@ -76,7 +77,7 @@ pub fn init(dev: pci.Device) void {
     const bar4 = dev.location.readConfig(.BaseAddr4);
 
     const progif = dev.location.readConfig(.ProgrammingInterface);
-    writeln("progif: {b}", .{progif});
+    std.log("progif: {b}", .{progif});
 
     var primary = Channel{
         .base = if (bar0 != 0) @intCast(bar0) else 0x1f0,

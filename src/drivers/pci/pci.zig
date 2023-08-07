@@ -3,6 +3,7 @@ const arch = @import("arch");
 const writeln = @import("root").serial.writeln;
 const deviceInfo = @import("devices.zig");
 const ide = @import("ide.zig");
+const log = std.log.scoped(.pci);
 
 const CONFIG_ADDRESS = 0xCF8;
 const CONFIG_DATA = 0xCFC;
@@ -121,7 +122,6 @@ pub const PciRegisters = enum(u8) {
 };
 
 pub fn init() void {
-    writeln("pci", .{});
     enumerate();
 }
 
@@ -156,7 +156,7 @@ fn getStorageDevice() ?Device {
                     continue;
                 }
                 var info = deviceInfo.getDeviceType(class, subclass);
-                writeln("info: {s}", .{info});
+                log.info("info: {s}", .{info});
 
                 return .{
                     .location = loc,
@@ -184,7 +184,7 @@ fn enumerate() void {
                     break;
                 }
                 const info = deviceInfo.getDeviceType(class, subclass);
-                writeln("({}, {}, {}): {s}", .{ bus, dev, func, info });
+                log.info("({}, {}, {}): {s}", .{ bus, dev, func, info });
             }
         }
     }

@@ -1,5 +1,4 @@
 var FixedAllocator = @import("allocator.zig").fixed_alloc.allocator();
-const writeln = @import("../serial.zig").writeln;
 
 extern const kernel_start: usize;
 extern const kernel_end: usize;

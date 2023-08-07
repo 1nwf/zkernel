@@ -1,7 +1,6 @@
 const boot = @import("../../boot/mutliboot_header.zig");
 const std = @import("std");
 const util = @import("../../util.zig");
-const serial = @import("root").serial;
 const root = @import("root");
 const vga = root.vga;
 

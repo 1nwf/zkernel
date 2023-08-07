@@ -1,14 +1,16 @@
-pub const vga = @import("drivers/vga.zig");
+const std = @import("std");
+const log = std.log.scoped(.default);
+
 const arch = @import("arch");
+const serial = arch.serial;
+const vga = @import("drivers/vga.zig");
 const gdt = arch.gdt;
-pub const serial = arch.serial;
 
 const int = @import("interrupts/interrupts.zig");
 const timer = @import("interrupts/timer.zig");
 const heap = @import("heap/heap.zig");
 const pg = arch.paging;
 const boot = @import("boot/mutliboot_header.zig");
-const std = @import("std");
 const pci = @import("drivers/pci/pci.zig");
 
 inline fn halt() noreturn {
@@ -24,8 +26,9 @@ export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
 }
 
 pub const std_options = struct {
-    pub fn logFn(comptime _: std.log.Level, comptime _: @Type(.EnumLiteral), comptime format: []const u8, args: anytype) void {
-        vga.writeln(format, args);
+    pub fn logFn(comptime _: std.log.Level, comptime scope: @Type(.EnumLiteral), comptime format: []const u8, args: anytype) void {
+        if (scope != .default) serial.write("{s}: ", .{@tagName(scope)});
+        serial.writeln(format, args);
     }
 };
 
