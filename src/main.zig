@@ -52,10 +52,6 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
 
     const memMap: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
     _ = memMap;
-
-    var dir: pg.PageDirectory align(4096) = pg.PageDirectory.init();
-    dir.identityMap();
-    dir.load();
-    pg.enable_paging();
+    arch.paging.init();
     pci.init();
 }

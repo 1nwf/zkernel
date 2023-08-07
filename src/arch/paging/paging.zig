@@ -185,3 +185,10 @@ pub fn flushTlbEntry(addr: usize) void {
         : [addr] "r" (addr),
     );
 }
+
+pub fn init() void {
+    var pg_dir: PageDirectory align(4096) = PageDirectory.init();
+    pg_dir.identityMap();
+    pg_dir.load();
+    enable_paging();
+}
