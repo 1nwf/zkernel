@@ -62,6 +62,17 @@ pub fn build(b: *std.Build) void {
     const bin = exe.addObjCopy(.{ .basename = "kernel.bin", .format = .bin });
     const install_step = b.addInstallBinFile(bin.getOutputSource(), bin.basename);
     b.default_step.dependOn(&install_step.step);
+
+    const unit_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/tests.zig" },
+        .target = b.standardTargetOptions(.{}),
+        .optimize = optimize,
+    });
+
+    const run_unit_tests = b.addRunArtifact(unit_tests);
+
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_unit_tests.step);
 }
 
 fn replaceExtension(b: *std.Build, path: []const u8, new_extension: []const u8) []const u8 {
