@@ -2,14 +2,15 @@ const MemMapEntry = @import("../boot/mutliboot_header.zig").MemMapEntry;
 const MemoryRegion = @import("memmap.zig").MemRegion;
 const PAGE_SIZE = @import("arch").paging.PAGE_SIZE;
 const std = @import("std");
+const log = std.log.scoped(.bump_alloc);
 
 const ListNodePtr = *allowzero ListNode;
 const ListNode = struct {
     size: usize,
     next: ?ListNodePtr = null,
 
-    fn init(addr: *allowzero anyopaque, size: usize) ListNodePtr {
-        var node: ListNodePtr = @ptrCast(@alignCast(addr));
+    fn init(addr: usize, size: usize) ListNodePtr {
+        var node: ListNodePtr = @ptrFromInt(addr);
         node.size = size;
         node.next = null;
         return node;
@@ -26,7 +27,7 @@ const ListNode = struct {
             const start = @min(self_addr, other_addr);
             const next1 = self.next;
             const next2 = other.next;
-            const node = ListNode.init(@ptrFromInt(start), self.size + other.size);
+            const node = ListNode.init(start, self.size + other.size);
             if (next1) |n1| {
                 if (next2) |n2| {
                     node.next = n1.appendNode(n2);
@@ -82,7 +83,7 @@ pub const BumpAllocator = struct {
                 const first_start = start; // 4KIB Aligned
                 const first_end = start + (res.start - start); // 4KIB aligned
                 if (first_end - first_start != 0) {
-                    var node = ListNode.init(@ptrFromInt(first_start), first_end - first_start);
+                    var node = ListNode.init(first_start, first_end - first_start);
                     if (prev) |p| {
                         p.next = node;
                         prev = node;
@@ -96,7 +97,7 @@ pub const BumpAllocator = struct {
                 const second_end = res.end + (end - res.end); // 4KIB aligned
 
                 if (second_end - second_start != 0) {
-                    var node = ListNode.init(@ptrFromInt(second_start), second_end - second_start);
+                    var node = ListNode.init(second_start, second_end - second_start);
                     if (prev) |p| {
                         p.next = node;
                         prev = node;
@@ -107,7 +108,7 @@ pub const BumpAllocator = struct {
                 }
                 continue :outer;
             }
-            var node = ListNode.init(@ptrFromInt(start), end - start);
+            var node = ListNode.init(start, end - start);
             if (prev) |p| {
                 p.next = node;
                 prev = node;
@@ -151,9 +152,9 @@ pub const BumpAllocator = struct {
 test "ListNode.appendNode" {
     const expectEqual = std.testing.expectEqual;
     var buff: [3]ListNode = undefined;
-    var node = ListNode.init(&buff[0], @sizeOf(ListNode));
-    var node2 = ListNode.init(&buff[1], @sizeOf(ListNode));
-    var node3 = ListNode.init(&buff[2], @sizeOf(ListNode));
+    var node = ListNode.init(@intFromPtr(&buff[0]), @sizeOf(ListNode));
+    var node2 = ListNode.init(@intFromPtr(&buff[1]), @sizeOf(ListNode));
+    var node3 = ListNode.init(@intFromPtr(&buff[2]), @sizeOf(ListNode));
 
     var head = node.appendNode(node3);
     try expectEqual(node, head);
