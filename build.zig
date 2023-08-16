@@ -68,6 +68,7 @@ pub fn build(b: *std.Build) void {
         .target = b.standardTargetOptions(.{}),
         .optimize = optimize,
     });
+    unit_tests.addModule("arch", arch);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
     run_unit_tests.has_side_effects = false;
