@@ -1,6 +1,8 @@
 const MemMapEntry = @import("../boot/mutliboot_header.zig").MemMapEntry;
 const MemoryRegion = @import("memmap.zig").MemRegion;
-const PAGE_SIZE = @import("arch").paging.PAGE_SIZE;
+const arch = @import("arch");
+const PAGE_SIZE = arch.paging.PAGE_SIZE;
+const PageDirectory = arch.paging.PageDirectory;
 const std = @import("std");
 const log = std.log.scoped(.bump_alloc);
 
@@ -70,9 +72,22 @@ pub const BumpAllocator = struct {
     const Self = @This();
 
     // TODO: dont override kernel code or kenrel stack
-    pub fn init(memMap: []MemMapEntry, reserved: []MemoryRegion) Self {
+    pub fn init(memMap: []MemMapEntry, reserved: []MemoryRegion, pg_dir: *PageDirectory) Self {
         var allocator = Self{};
         var prev: ?ListNodePtr = null;
+        const appendNode = struct {
+            fn appendNode(pmm: *BumpAllocator, node: ListNodePtr, prev_node: *?ListNodePtr, pgdir: *PageDirectory) void {
+                if (prev_node.*) |p| {
+                    p.next = node;
+                    prev_node.* = node;
+                } else {
+                    pmm.head = node;
+                    prev_node.* = node;
+                }
+                pgdir.mapPage(@intFromPtr(node), @intFromPtr(node));
+            }
+        }.appendNode;
+
         outer: for (memMap) |entry| {
             if (entry.type != .Available or entry.length < PAGE_SIZE) continue;
             const start = std.mem.alignForward(usize, @intCast(entry.base_addr), PAGE_SIZE);
@@ -84,13 +99,7 @@ pub const BumpAllocator = struct {
                 const first_end = start + (res.start - start); // 4KIB aligned
                 if (first_end - first_start != 0) {
                     var node = ListNode.init(first_start, first_end - first_start);
-                    if (prev) |p| {
-                        p.next = node;
-                        prev = node;
-                    } else {
-                        allocator.head = node;
-                        prev = node;
-                    }
+                    appendNode(&allocator, node, &prev, pg_dir);
                 }
 
                 const second_start = res.end; // 4KIB aligned
@@ -98,24 +107,12 @@ pub const BumpAllocator = struct {
 
                 if (second_end - second_start != 0) {
                     var node = ListNode.init(second_start, second_end - second_start);
-                    if (prev) |p| {
-                        p.next = node;
-                        prev = node;
-                    } else {
-                        allocator.head = node;
-                        prev = node;
-                    }
+                    appendNode(&allocator, node, &prev, pg_dir);
                 }
                 continue :outer;
             }
             var node = ListNode.init(start, end - start);
-            if (prev) |p| {
-                p.next = node;
-                prev = node;
-            } else {
-                allocator.head = node;
-                prev = node;
-            }
+            appendNode(&allocator, node, &prev, pg_dir);
         }
         return allocator;
     }
@@ -143,7 +140,7 @@ pub const BumpAllocator = struct {
     pub fn print(self: *Self) void {
         var temp = self.head;
         while (temp) |entry| {
-            std.log.info("entry: 0x{x}", .{entry.size});
+            std.log.info("addr: 0x{x} -- entry: 0x{x}", .{ @intFromPtr(entry), entry.size });
             temp = entry.next;
         }
     }

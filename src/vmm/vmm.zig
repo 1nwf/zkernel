@@ -13,8 +13,8 @@ pmm: BumpAlloc,
 pg_dir: pg.PageDirectory align(pg.PAGE_SIZE),
 
 pub fn init(mem_map: []MemMapEntry, reserved: []MemoryRegion) Self {
-    var allocator = BumpAlloc.init(mem_map, reserved);
     var pg_dir: pg.PageDirectory align(pg.PAGE_SIZE) = pg.PageDirectory.init();
+    var allocator = BumpAlloc.init(mem_map, reserved, &pg_dir);
     for (reserved) |res| {
         pg_dir.mapRegions(res.start, res.start, res.end - res.start);
     }
