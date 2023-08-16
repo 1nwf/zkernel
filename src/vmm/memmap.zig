@@ -1,3 +1,6 @@
+const std = @import("std");
+const PAGE_SIZE = @import("arch").paging.PAGE_SIZE;
+
 const Entry = struct {
     start: u32,
     size: u32,
@@ -13,9 +16,18 @@ const RegionType = enum {
     Available,
 };
 
-pub const MemMapEntry = extern struct {
-    base: u64,
-    length: u64,
-    type: u32,
-    acpi: u32,
+pub const MemRegion = struct {
+    start: usize,
+    end: usize,
+
+    /// start and end MUST be page aligned
+    pub fn init(start: usize, end: usize) @This() {
+        std.debug.assert(start % PAGE_SIZE == 0);
+        std.debug.assert(end % PAGE_SIZE == 0);
+
+        return .{
+            .start = start,
+            .end = end,
+        };
+    }
 };

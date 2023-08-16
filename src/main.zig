@@ -13,6 +13,8 @@ const pg = arch.paging;
 const boot = @import("boot/mutliboot_header.zig");
 const pci = @import("drivers/pci/pci.zig");
 
+const vmm = @import("vmm/vmm.zig");
+
 inline fn halt() noreturn {
     int.enable();
     while (true) {
@@ -39,22 +41,23 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
 
 extern const kernel_start: usize;
 extern const kernel_end: usize;
+
 fn main(bootInfo: *boot.MultiBootInfo) !void {
     gdt.init();
     int.init();
     serial.init();
     vga.init(.{ .bg = .LightRed }, .Underline);
 
-    const mem_aval = 0x00000040;
     vga.writeln("bootloader name: {s}", .{bootInfo.boot_loader_name});
     vga.writeln("header flags: 0b{b}", .{bootInfo.flags});
-    vga.writeln("mem avail: {}", .{((bootInfo.flags & mem_aval) != 0)});
 
     const mem_map_length = bootInfo.mmap_length / @sizeOf(boot.MemMapEntry);
     vga.writeln("mmap length: {}", .{mem_map_length});
 
-    const memMap: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
-    _ = memMap;
-    arch.paging.init();
+    const mem_map: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
+    var reserved_mem_regions = [_]vmm.MemoryRegion{
+        vmm.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end)),
+    };
+    _ = vmm.init(mem_map, &reserved_mem_regions);
     pci.init();
 }
