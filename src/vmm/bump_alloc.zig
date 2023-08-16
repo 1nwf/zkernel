@@ -8,7 +8,7 @@ const ListNode = struct {
     size: usize,
     next: ?ListNodePtr = null,
 
-    fn init(addr: *anyopaque, size: usize) ListNodePtr {
+    fn init(addr: *allowzero anyopaque, size: usize) ListNodePtr {
         var node: ListNodePtr = @ptrCast(@alignCast(addr));
         node.size = size;
         node.next = null;
