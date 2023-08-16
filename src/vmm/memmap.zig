@@ -22,12 +22,9 @@ pub const MemRegion = struct {
 
     /// start and end MUST be page aligned
     pub fn init(start: usize, end: usize) @This() {
-        std.debug.assert(start % PAGE_SIZE == 0);
-        std.debug.assert(end % PAGE_SIZE == 0);
-
         return .{
-            .start = start,
-            .end = end,
+            .start = std.mem.alignForward(usize, start, PAGE_SIZE),
+            .end = std.mem.alignForward(usize, end, PAGE_SIZE),
         };
     }
 };
