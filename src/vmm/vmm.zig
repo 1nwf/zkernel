@@ -15,7 +15,9 @@ pg_dir: pg.PageDirectory,
 pub fn init(mem_map: []MemMapEntry, reserved: []MemoryRegion) Self {
     var allocator = BumpAlloc.init(mem_map, reserved);
     var pg_dir: pg.PageDirectory align(pg.PAGE_SIZE) = pg.PageDirectory.init();
-    pg_dir.identityMap();
+    for (reserved) |res| {
+        pg_dir.mapRegions(res.start, res.start, res.end - res.start);
+    }
     pg_dir.load();
     pg.enable_paging();
 

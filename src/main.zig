@@ -57,7 +57,9 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     const mem_map: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
     var reserved_mem_regions = [_]vmm.MemoryRegion{
         vmm.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end)),
+        vmm.MemoryRegion.init(0xb8000, 0xb8000 + (25 * 80)), // frame buffer
     };
+
     _ = vmm.init(mem_map, &reserved_mem_regions);
     pci.init();
 }
