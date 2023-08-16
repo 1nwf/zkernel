@@ -41,7 +41,7 @@ pub fn pageFaultHandler() void {}
 // physical frame that is pointed to by the corresponding page table entry.
 // Page Frame addresses only need 20 bits since they are 4kib aligned. the lower 12 bits are zeroed out.
 
-const PAGE_SIZE = 4096;
+pub const PAGE_SIZE = 4096;
 const PTEntries = 1024;
 const PDEntries = 1024;
 
@@ -103,7 +103,7 @@ pub const PageDirEntry = packed struct {
         self.present = 1;
         return self;
     }
-    pub fn setAddr(self: *@This(), addr: u32) void {
+    pub fn setAddr(self: *@This(), addr: usize) void {
         self.address = @truncate(addr >> 12);
     }
 };
@@ -111,7 +111,10 @@ pub const PageDirEntry = packed struct {
 pub const PageDirectory = struct {
     dirs: [PDEntries]PageDirEntry,
     pageTables: [PDEntries]?*PageTable,
-    pub fn init() align(PAGE_SIZE) @This() {
+
+    const Self = @This();
+
+    pub fn init() align(PAGE_SIZE) Self {
         return .{
             .dirs = [_]PageDirEntry{PageDirEntry{}} ** PDEntries,
             .pageTables = [_]?*PageTable{null} ** PDEntries,
@@ -119,7 +122,7 @@ pub const PageDirectory = struct {
     }
 
     // identity maps the kernel for now
-    pub fn identityMap(self: *@This()) void {
+    pub fn identityMap(self: *Self) void {
         var start: usize = 0;
         const end = @intFromPtr(&kernel_end) + 1;
         while (start < end) : (start += PAGE_SIZE) {
@@ -127,15 +130,15 @@ pub const PageDirectory = struct {
         }
     }
 
-    inline fn findDir(self: *@This(), addr: usize) *PageDirEntry {
+    inline fn findDir(self: *Self, addr: usize) *PageDirEntry {
         return &self.dirs[dirIndex(addr)];
     }
 
-    pub fn getDirPageTable(self: *@This(), virt_addr: usize) ?*PageTable {
+    pub fn getDirPageTable(self: *Self, virt_addr: usize) ?*PageTable {
         return self.pageTables[dirIndex(virt_addr)];
     }
 
-    pub fn createDirPageTable(self: *@This(), virt_addr: usize) *PageTable {
+    pub fn createDirPageTable(self: *Self, virt_addr: usize) *PageTable {
         var dir_idx = dirIndex(virt_addr);
         var page_table = &(FixedAllocator.alignedAlloc(PageTable, PAGE_SIZE, 1) catch @panic("unable to alloc page table"))[0];
         page_table.setDefault();
@@ -143,7 +146,7 @@ pub const PageDirectory = struct {
         return page_table;
     }
 
-    fn mapPage(self: *@This(), virt_addr: usize, phys_addr: usize) void {
+    pub fn mapPage(self: *Self, virt_addr: usize, phys_addr: usize) void {
         var dir = self.findDir(virt_addr).setPresent();
 
         var page_table: *PageTable = blk: {
@@ -160,7 +163,23 @@ pub const PageDirectory = struct {
         dir.setAddr(@intFromPtr(page_table));
     }
 
-    pub fn load(self: *@This()) void {
+    /// maps  contiguous blocks of memory
+    /// args must be page aligned
+    pub fn mapRegions(
+        self: *Self,
+        phys_addr: usize,
+        virt_addr: usize,
+        region_size: usize,
+    ) void {
+        std.debug.assert(isPageAligned(phys_addr));
+        std.debug.assert(isPageAligned(virt_addr));
+        var start = 0;
+        while (start < region_size) : (start + PAGE_SIZE) {
+            self.mapPage(virt_addr + start, phys_addr + start);
+        }
+    }
+
+    pub fn load(self: *Self) void {
         asm volatile (
             \\ mov %[addr], %%cr3
             :
@@ -185,9 +204,6 @@ pub fn flushTlbEntry(addr: usize) void {
     );
 }
 
-pub fn init() void {
-    var pg_dir: PageDirectory align(4096) = PageDirectory.init();
-    pg_dir.identityMap();
-    pg_dir.load();
-    enable_paging();
+pub fn isPageAligned(addr: usize) bool {
+    return addr & 0xFFF == 0;
 }
