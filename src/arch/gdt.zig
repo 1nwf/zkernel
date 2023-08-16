@@ -58,7 +58,7 @@ pub const GDT = [_]Entry{ Entry.empty(), CodeSegment, DataSegment };
 
 pub const GDTR = extern struct {
     size: u16,
-    base: u32 align(2),
+    base: usize align(2),
     fn init(base: u32, size: u16) GDTR {
         return GDTR{ .base = base, .size = size };
     }
