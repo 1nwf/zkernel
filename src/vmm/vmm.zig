@@ -10,7 +10,7 @@ const MemMapEntry = @import("../boot/mutliboot_header.zig").MemMapEntry;
 const Self = @This();
 
 pmm: BumpAlloc,
-pg_dir: pg.PageDirectory,
+pg_dir: pg.PageDirectory align(pg.PAGE_SIZE),
 
 pub fn init(mem_map: []MemMapEntry, reserved: []MemoryRegion) Self {
     var allocator = BumpAlloc.init(mem_map, reserved);
@@ -18,13 +18,16 @@ pub fn init(mem_map: []MemMapEntry, reserved: []MemoryRegion) Self {
     for (reserved) |res| {
         pg_dir.mapRegions(res.start, res.start, res.end - res.start);
     }
-    pg_dir.load();
-    pg.enable_paging();
 
     return .{
         .pmm = allocator,
         .pg_dir = pg_dir,
     };
+}
+
+pub fn enablePaging(self: *Self) void {
+    self.pg_dir.load();
+    pg.enable_paging();
 }
 
 test {

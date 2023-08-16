@@ -60,6 +60,7 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
         vmm.MemoryRegion.init(0xb8000, 0xb8000 + (25 * 80)), // frame buffer
     };
 
-    _ = vmm.init(mem_map, &reserved_mem_regions);
+    var v = vmm.init(mem_map, &reserved_mem_regions);
+    v.enablePaging();
     pci.init();
 }
