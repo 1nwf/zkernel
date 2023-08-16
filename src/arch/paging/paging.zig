@@ -165,16 +165,11 @@ pub const PageDirectory = struct {
 
     /// maps  contiguous blocks of memory
     /// args must be page aligned
-    pub fn mapRegions(
-        self: *Self,
-        phys_addr: usize,
-        virt_addr: usize,
-        region_size: usize,
-    ) void {
+    pub fn mapRegions(self: *Self, phys_addr: usize, virt_addr: usize, region_size: usize) void {
         std.debug.assert(isPageAligned(phys_addr));
         std.debug.assert(isPageAligned(virt_addr));
-        var start = 0;
-        while (start < region_size) : (start + PAGE_SIZE) {
+        var start: usize = 0;
+        while (start < region_size) : (start += PAGE_SIZE) {
             self.mapPage(virt_addr + start, phys_addr + start);
         }
     }
