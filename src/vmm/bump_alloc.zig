@@ -66,19 +66,48 @@ extern const kernel_end: usize;
 
 pub const BumpAllocator = struct {
     head: ?ListNodePtr = null,
-    reserved: []MemoryRegion,
     const Self = @This();
 
     // TODO: dont override kernel code or kenrel stack
     pub fn init(memMap: []MemMapEntry, reserved: []MemoryRegion) Self {
-        var allocator = Self{
-            .Reserved = reserved,
-        };
+        var allocator = Self{};
         var prev: ?ListNodePtr = null;
-        for (memMap) |entry| {
+        outer: for (memMap) |entry| {
             if (entry.type != .Available or entry.length < PAGE_SIZE) continue;
-            var base_addr = std.mem.alignForward(usize, @as(usize, @intCast(entry.base_addr)), PAGE_SIZE);
-            var node = ListNode.init(base_addr, @intCast(entry.length));
+            const start = std.mem.alignForward(usize, @intCast(entry.base_addr), PAGE_SIZE);
+            const end = std.mem.alignBackward(usize, @intCast(entry.base_addr + entry.length), PAGE_SIZE);
+            for (reserved) |res| {
+                const in = res.start >= start and res.end <= end;
+                if (!in or res.start == start and res.end == end) continue;
+                const first_start = start; // 4KIB Aligned
+                const first_end = start + (res.start - start); // 4KIB aligned
+                if (first_end - first_start != 0) {
+                    var node = ListNode.init(@ptrFromInt(first_start), first_end - first_start);
+                    if (prev) |p| {
+                        p.next = node;
+                        prev = node;
+                    } else {
+                        allocator.head = node;
+                        prev = node;
+                    }
+                }
+
+                const second_start = res.end; // 4KIB aligned
+                const second_end = res.end + (end - res.end); // 4KIB aligned
+
+                if (second_end - second_start != 0) {
+                    var node = ListNode.init(@ptrFromInt(second_start), second_end - second_start);
+                    if (prev) |p| {
+                        p.next = node;
+                        prev = node;
+                    } else {
+                        allocator.head = node;
+                        prev = node;
+                    }
+                }
+                continue :outer;
+            }
+            var node = ListNode.init(@ptrFromInt(start), end - start);
             if (prev) |p| {
                 p.next = node;
                 prev = node;
@@ -87,7 +116,6 @@ pub const BumpAllocator = struct {
                 prev = node;
             }
         }
-
         return allocator;
     }
 
@@ -133,4 +161,32 @@ test "ListNode.appendNode" {
     head = node.appendNode(node2);
     try expectEqual(node, head);
     try expectEqual(head.next, node3);
+}
+
+test "BumpAlloc.init" {
+    const expecEqual = std.testing.expectEqual;
+    var alloc = std.testing.allocator;
+
+    const block = try alloc.alignedAlloc(u8, PAGE_SIZE, PAGE_SIZE * 3);
+    defer alloc.free(block);
+
+    var reserved = [_]MemoryRegion{
+        MemoryRegion.init(@intFromPtr(&block[PAGE_SIZE]), @intFromPtr(&block[PAGE_SIZE]) + PAGE_SIZE),
+    };
+
+    var mem = [_]MemMapEntry{
+        .{
+            .type = .Available,
+            .size = @sizeOf(MemMapEntry),
+            .base_addr = @intFromPtr(&block[0]),
+            .length = PAGE_SIZE * 3,
+        },
+    };
+
+    var bump = BumpAllocator.init(&mem, &reserved);
+    try expecEqual(@intFromPtr(bump.head.?), @intFromPtr(&block[0]));
+    try expecEqual(bump.head.?.size, PAGE_SIZE);
+    const next = bump.head.?.next.?;
+    try expecEqual(@intFromPtr(next), @intFromPtr(&block[PAGE_SIZE * 2]));
+    try expecEqual(next.size, PAGE_SIZE);
 }
