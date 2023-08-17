@@ -181,7 +181,8 @@ test "BumpAlloc.init" {
         },
     };
 
-    var bump = BumpAllocator.init(&mem, &reserved);
+    var pg_dir: PageDirectory align(PAGE_SIZE) = PageDirectory.init();
+    var bump = BumpAllocator.init(&mem, &reserved, &pg_dir);
     try expecEqual(@intFromPtr(bump.head.?), @intFromPtr(&block[0]));
     try expecEqual(bump.head.?.size, PAGE_SIZE);
     const next = bump.head.?.next.?;
