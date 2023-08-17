@@ -12,6 +12,7 @@ an operating system kernel developed for learning purposes.
 - [ ] create nic (network interface card) driver
 - [ ] create disk driver (ata/ide)
 - [ ] create a filesystem (FAT?)
+- [ ] remove makefile and utilize zig build system for linking kernel + bootloader, running in qemu, and other cmds.
 
 ## Possible Future Goals:
 - [ ] have partial compatibility with the linux ABI. Can execute simple linux binaries
