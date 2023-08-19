@@ -3,3 +3,7 @@ pub const gdt = @import("arch/gdt.zig");
 pub const paging = @import("arch/paging/paging.zig");
 
 pub usingnamespace @import("arch/io.zig");
+
+test {
+    _ = paging;
+}

@@ -55,10 +55,11 @@ pub const PageTableEntry = packed struct {
     rsvd: u2 = 0, // reserved
     avail: u3 = 0, // (avail) ignored
     address: u20 = 0,
-    pub fn init(frame: usize) @This() {
+    const Self = @This();
+    pub fn init(frame: usize) Self {
         return .{ .present = 1, .address = @truncate(frame >> 12) };
     }
-    pub fn setAddr(self: *@This(), addr: usize) *@This() {
+    pub fn setAddr(self: *Self, addr: usize) *Self {
         self.address = @truncate(addr >> 12);
         return self;
     }
@@ -95,15 +96,16 @@ pub const PageDirEntry = packed struct {
     g: u1 = 0, // global
     avail: u3 = 0, // (avail) ignored
     address: u20 = 0,
-    pub fn init(pt_addr: u20) @This() {
+    const Self = @This();
+    pub fn init(pt_addr: u20) Self {
         return .{ .present = 1, .address = pt_addr };
     }
 
-    fn setPresent(self: *@This()) *@This() {
+    fn setPresent(self: *Self) *Self {
         self.present = 1;
         return self;
     }
-    pub fn setAddr(self: *@This(), addr: usize) void {
+    pub fn setAddr(self: *Self, addr: usize) void {
         self.address = @truncate(addr >> 12);
     }
 };
@@ -114,20 +116,12 @@ pub const PageDirectory = struct {
 
     const Self = @This();
 
-    pub fn init() align(PAGE_SIZE) Self {
+    // NOTE: must be page aligned
+    pub fn init() Self {
         return .{
             .dirs = [_]PageDirEntry{PageDirEntry{}} ** PDEntries,
             .pageTables = [_]?*PageTable{null} ** PDEntries,
         };
-    }
-
-    // identity maps the kernel for now
-    pub fn identityMap(self: *Self) void {
-        var start: usize = 0;
-        const end = @intFromPtr(&kernel_end) + 1;
-        while (start < end) : (start += PAGE_SIZE) {
-            self.mapPage(start, start);
-        }
     }
 
     inline fn findDir(self: *Self, addr: usize) *PageDirEntry {
@@ -174,6 +168,13 @@ pub const PageDirectory = struct {
         }
     }
 
+    pub fn unmapPage(self: *Self, addr: usize) void {
+        var page_table = self.getDirPageTable(addr) orelse return;
+        var table_entry = page_table.findEntry(addr);
+        if (table_entry.present == 0) return;
+        table_entry.present = 0;
+    }
+
     pub fn load(self: *Self) void {
         asm volatile (
             \\ mov %[addr], %%cr3
@@ -201,4 +202,18 @@ pub fn flushTlbEntry(addr: usize) void {
 
 pub fn isPageAligned(addr: usize) bool {
     return addr & 0xFFF == 0;
+}
+
+test {
+    const expect = std.testing.expect;
+    var dir: PageDirectory align(PAGE_SIZE) = PageDirectory.init();
+    const virt_addr = 0;
+    const phys_addr = 0x1000;
+    dir.mapPage(virt_addr, phys_addr);
+    var page_table = dir.getDirPageTable(virt_addr) orelse @panic("page table is empty");
+    const entry = page_table.findEntry(virt_addr);
+    try expect(entry.present == 1);
+    try expect(entry.address == phys_addr >> 12);
+    dir.unmapPage(virt_addr);
+    try expect(entry.present == 0);
 }

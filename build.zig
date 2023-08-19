@@ -6,7 +6,7 @@ const Step = std.Build.Step;
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -71,10 +71,16 @@ pub fn build(b: *std.Build) void {
     unit_tests.addModule("arch", arch);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
-    run_unit_tests.has_side_effects = false;
+
+    const arch_tests = b.addTest(.{
+        .root_source_file = .{ .path = "src/arch.zig" },
+        .optimize = optimize,
+    });
+    const run_arch_tests = b.addRunArtifact(arch_tests);
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
+    test_step.dependOn(&run_arch_tests.step);
 }
 
 fn replaceExtension(b: *std.Build, path: []const u8, new_extension: []const u8) []const u8 {
