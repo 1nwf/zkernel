@@ -4,16 +4,16 @@ const log = std.log.scoped(.vmm);
 const arch = @import("arch");
 const pg = arch.paging;
 pub const MemoryRegion = @import("memmap.zig").MemRegion;
-const BumpAlloc = @import("bump_alloc.zig").BumpAllocator;
+const FrameAllocator = @import("frame_allocator.zig").FrameAllocator;
 const MemMapEntry = @import("../boot/mutliboot_header.zig").MemMapEntry;
 
 const Self = @This();
 
-pmm: BumpAlloc,
+pmm: FrameAllocator,
 page_directory: *pg.PageDirectory,
 
 pub fn init(page_directory: *pg.PageDirectory, mem_map: []MemMapEntry, reserved: []MemoryRegion) Self {
-    var allocator = BumpAlloc.init(mem_map, reserved, page_directory);
+    var allocator = FrameAllocator.init(mem_map, reserved, page_directory);
     // TODO: map kernel at higher virtual mem address
     for (reserved) |res| {
         page_directory.mapRegions(res.start, res.start, res.end - res.start);
@@ -31,5 +31,5 @@ pub fn enablePaging(self: *Self) void {
 }
 
 test {
-    _ = BumpAlloc;
+    _ = FrameAllocator;
 }
