@@ -1,8 +1,11 @@
 const int = @import("interrupts.zig");
 const writeln = @import("../drivers/vga.zig").writeln;
+const arch = @import("arch");
 
 export fn isr_handler(ctx: int.Context) void {
-    writeln("int fired: {} - err_code: {}", .{ ctx.int_num, ctx.err_code });
+    const handler = int.interrupt_handlers[ctx.int_num];
+    handler(ctx);
+    arch.halt();
 }
 
 pub export fn isr_common() callconv(.Naked) void {

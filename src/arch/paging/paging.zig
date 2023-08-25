@@ -24,9 +24,6 @@ pub fn isEnabled() bool {
     return (cr0 >> 31) == 1;
 }
 
-// NOTE: address that caused page fault is stored in the `cr2` register
-pub fn pageFaultHandler() void {}
-
 // NOTE: in protected mode, two level paging is used
 // an address is first translated from a logical --> linear via segmentation
 // then it is translated from linear --> physical via paging

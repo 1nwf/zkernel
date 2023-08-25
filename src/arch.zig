@@ -7,3 +7,10 @@ pub usingnamespace @import("arch/io.zig");
 test {
     _ = paging;
 }
+
+pub fn halt() noreturn {
+    asm volatile ("sti");
+    while (true) {
+        asm volatile ("hlt");
+    }
+}

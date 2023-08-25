@@ -5,6 +5,8 @@ const timer = @import("timer.zig");
 const isr = @import("isr.zig");
 const irq = @import("irq.zig");
 
+const pageFaultHandler = @import("page_fault.zig").pageFaultHandler;
+
 pub fn init() void {
     disable();
     pic.remapPic(0x20, 0x28);
@@ -15,6 +17,7 @@ pub fn init() void {
     initInterrupts();
     idt.descriptor = idt.IDTDescr.init(@sizeOf(idt.IDT) - 1, @intFromPtr(&idt.idt));
     idt.descriptor.load();
+    setExceptionHandler(14, pageFaultHandler);
     enable();
 }
 
