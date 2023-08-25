@@ -15,16 +15,9 @@ const pci = @import("drivers/pci/pci.zig");
 
 const vmm = @import("vmm/vmm.zig");
 
-inline fn halt() noreturn {
-    int.enable();
-    while (true) {
-        asm volatile ("hlt");
-    }
-}
-
 export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
     main(bootInfo) catch {};
-    halt();
+    arch.halt();
 }
 
 pub const std_options = struct {
@@ -35,13 +28,14 @@ pub const std_options = struct {
 };
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
-    serial.write("panic: {s}", .{msg});
-    halt();
+    serial.writeln("panic: {s}", .{msg});
+    arch.halt();
 }
 
 extern const kernel_start: usize;
 extern const kernel_end: usize;
 
+var kernel_page_dir: pg.PageDirectory align(pg.PAGE_SIZE) = pg.PageDirectory.init();
 fn main(bootInfo: *boot.MultiBootInfo) !void {
     gdt.init();
     int.init();
@@ -60,7 +54,7 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
         vmm.MemoryRegion.init(0xb8000, 0xb8000 + (25 * 80)), // frame buffer
     };
 
-    var v = vmm.init(mem_map, &reserved_mem_regions);
+    var v = vmm.init(&kernel_page_dir, mem_map, &reserved_mem_regions);
     v.enablePaging();
     pci.init();
 }
