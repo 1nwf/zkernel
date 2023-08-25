@@ -8,7 +8,7 @@ const sendEoi = @import("pic.zig").sendEoi;
 export fn irq_handler(ctx: Context) void {
     const handler = int.interrupt_handlers[ctx.err_code];
     handler(ctx);
-    sendEoi(0);
+    sendEoi(ctx.int_num);
 }
 
 export fn irq_common() callconv(.Naked) void {
