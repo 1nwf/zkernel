@@ -70,11 +70,13 @@ extern const kernel_end: usize;
 // Free List
 pub const FrameAllocator = struct {
     head: ?ListNodePtr = null,
+    page_dir: *PageDirectory,
     const Self = @This();
 
-    // TODO: dont override kernel code or kenrel stack
     pub fn init(memMap: []MemMapEntry, reserved: []MemoryRegion, pg_dir: *PageDirectory) Self {
-        var allocator = Self{};
+        var allocator = Self{
+            .page_dir = pg_dir,
+        };
         var prev: ?ListNodePtr = null;
         const appendNode = struct {
             fn appendNode(pmm: *FrameAllocator, node: ListNodePtr, prev_node: *?ListNodePtr, pgdir: *PageDirectory) void {
@@ -125,7 +127,9 @@ pub const FrameAllocator = struct {
         const head = self.head.?;
         std.debug.assert(head.size >= PAGE_SIZE);
 
-        const next_node = ListNode.init(@intFromPtr(head) + PAGE_SIZE, head.size - PAGE_SIZE);
+        const next_ptr = @intFromPtr(head) + PAGE_SIZE;
+        self.page_dir.mapPage(next_ptr, next_ptr);
+        const next_node = ListNode.init(next_ptr, head.size - PAGE_SIZE);
         self.head = next_node;
         return @ptrCast(head);
     }
@@ -135,6 +139,7 @@ pub const FrameAllocator = struct {
             self.head = ListNode.init(addr, PAGE_SIZE);
             return;
         }
+        self.page_dir.unmapPage(addr);
         self.head = self.head.?.appendNode(ListNode.init(addr, PAGE_SIZE));
     }
 
