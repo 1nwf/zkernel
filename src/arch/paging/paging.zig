@@ -64,11 +64,8 @@ pub const PageTableEntry = packed struct {
 
 const PageTable = struct {
     entries: [PTEntries]PageTableEntry = [_]PageTableEntry{.{}} ** PTEntries,
-    pub fn init() PageTable {
-        return .{};
-    }
 
-    fn setDefault(self: *@This()) void {
+    fn init(self: *@This()) void {
         self.entries = [_]PageTableEntry{.{}} ** PTEntries;
     }
 
@@ -132,7 +129,7 @@ pub const PageDirectory = struct {
     pub fn createDirPageTable(self: *Self, virt_addr: usize) *PageTable {
         var dir_idx = dirIndex(virt_addr);
         var page_table = &(FixedAllocator.alignedAlloc(PageTable, PAGE_SIZE, 1) catch @panic("unable to alloc page table"))[0];
-        page_table.setDefault();
+        page_table.init();
         self.pageTables[dir_idx] = page_table;
         return page_table;
     }
