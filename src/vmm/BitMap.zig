@@ -1,17 +1,31 @@
 const std = @import("std");
 const PAGE_SIZE = @import("arch").paging.PAGE_SIZE;
+const Allocator = std.mem.Allocator;
 
 const MemoryRegion = @import("memmap.zig").MemRegion;
 
-pub fn BitMap(comptime size: usize) type {
+pub fn BitMap(comptime size: ?usize) type {
     return struct {
-        data: [size]usize,
+        data: if (dynamic) []usize else [size.?]usize,
+        allocator: if (dynamic) Allocator else ?Allocator,
+
+        const dynamic = size == null;
         const Self = @This();
         const BITS_PER_ENTRY = @bitSizeOf(usize);
-        pub fn init(reserved: []MemoryRegion) Self {
-            var bitmap = Self{
-                .data = [_]usize{0} ** size,
-            };
+        pub fn init(reserved: []MemoryRegion, allocator: if (dynamic) Allocator else ?Allocator, n: if (dynamic) usize else ?usize) !Self {
+            var bitmap: Self = undefined;
+            if (dynamic) {
+                bitmap = Self{
+                    .data = try allocator.alloc(usize, n),
+                    .allocator = allocator,
+                };
+                @memset(bitmap.data, 0);
+            } else {
+                bitmap = Self{
+                    .data = [_]usize{0} ** size.?,
+                    .allocator = null,
+                };
+            }
 
             for (reserved) |region| {
                 var start = std.mem.alignBackward(usize, region.start, PAGE_SIZE);
@@ -29,9 +43,9 @@ pub fn BitMap(comptime size: usize) type {
         }
 
         pub fn alloc(self: *Self) !usize {
-            for (&self.data, 0..) |*entry, idx| {
-                if (entry.* == std.math.maxInt(usize)) continue;
-                const bit_idx = @ctz(~entry.*);
+            for (self.data, 0..) |entry, idx| {
+                if (entry == std.math.maxInt(usize)) continue;
+                const bit_idx = @ctz(~entry);
                 try self.set(bit_idx);
                 return (bit_idx + (idx * BITS_PER_ENTRY)) * PAGE_SIZE;
             }
@@ -52,6 +66,12 @@ pub fn BitMap(comptime size: usize) type {
         pub fn clear(self: *Self, idx: usize) void {
             self.data[idx / BITS_PER_ENTRY] &= ~(@as(usize, 1) << @intCast(idx % BITS_PER_ENTRY));
         }
+
+        pub fn deinit(self: *Self) void {
+            if (dynamic) {
+                self.allocator.free(self.data);
+            }
+        }
     };
 }
 
@@ -64,7 +84,7 @@ test "init" {
         MemoryRegion.init(0x4000, 0x5000),
     };
 
-    var bitmap = BitMap(1).init(&reserved);
+    var bitmap = try BitMap(1).init(&reserved, null, null);
 
     try expect(bitmap.data[0] == 0b10111);
 }
@@ -73,7 +93,7 @@ test "alloc" {
     const expect = std.testing.expect;
     var reserved = [_]MemoryRegion{};
 
-    var bitmap = BitMap(1).init(&reserved);
+    var bitmap = try BitMap(1).init(&reserved, null, null);
 
     comptime var i = 0;
     inline while (i < 64) : (i += 1) {
@@ -88,7 +108,7 @@ test "free" {
     const expect = std.testing.expect;
     var reserved = [_]MemoryRegion{};
 
-    var bitmap = BitMap(1).init(&reserved);
+    var bitmap = try BitMap(1).init(&reserved, null, null);
 
     const addr = try bitmap.alloc();
     try expect(bitmap.data[0] == 1);
@@ -116,7 +136,7 @@ test "allocRegion" {
     const expect = std.testing.expect;
     var reserved = [_]MemoryRegion{};
 
-    var bitmap = BitMap(2).init(&reserved);
+    var bitmap = try BitMap(2).init(&reserved, null, null);
 
     const bit_index = (PAGE_SIZE * 64) * 2 - 1;
     try bitmap.allocRegion(bit_index);
