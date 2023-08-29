@@ -2,7 +2,7 @@ const std = @import("std");
 const PAGE_SIZE = @import("arch").paging.PAGE_SIZE;
 const Allocator = std.mem.Allocator;
 
-const MemoryRegion = @import("memmap.zig").MemRegion;
+const MemoryRegion = @import("memmap.zig").MemoryRegion;
 
 pub fn BitMap(comptime size: ?usize) type {
     return struct {
@@ -37,6 +37,7 @@ pub fn BitMap(comptime size: ?usize) type {
 
             return bitmap;
         }
+
         pub fn allocRegion(self: *Self, addr: usize) !void {
             const bit_idx: usize = addr / PAGE_SIZE;
             try self.set(bit_idx);

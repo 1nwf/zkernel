@@ -1,5 +1,5 @@
-const vmm = @import("vmm/vmm.zig");
+const mem = @import("mem/mem.zig");
 
 test {
-    _ = vmm;
+    _ = mem;
 }

@@ -13,7 +13,7 @@ const pg = arch.paging;
 const boot = @import("boot/mutliboot_header.zig");
 const pci = @import("drivers/pci/pci.zig");
 
-const vmm = @import("vmm/vmm.zig");
+const mem = @import("mem/mem.zig");
 
 export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
     main(bootInfo) catch {};
@@ -49,12 +49,13 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     vga.writeln("mmap length: {}", .{mem_map_length});
 
     const mem_map: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
-    var reserved_mem_regions = [_]vmm.MemoryRegion{
-        vmm.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end)),
-        vmm.MemoryRegion.init(0xb8000, 0xb8000 + (25 * 80)), // frame buffer
+
+    var reserved_mem_regions = [_]mem.MemoryRegion{
+        mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end)),
+        mem.MemoryRegion.init(0xb8000, 0xb8000 + (25 * 80)), // frame buffer
     };
 
-    var v = vmm.init(&kernel_page_dir, mem_map, &reserved_mem_regions);
+    var v = mem.vmm.init(&kernel_page_dir, mem_map, &reserved_mem_regions);
     v.enablePaging();
     pci.init();
 }

@@ -1,10 +1,11 @@
 const MemMapEntry = @import("../boot/mutliboot_header.zig").MemMapEntry;
-const MemoryRegion = @import("memmap.zig").MemRegion;
+const MemoryRegion = @import("memmap.zig").MemoryRegion;
 const arch = @import("arch");
 const PAGE_SIZE = arch.paging.PAGE_SIZE;
 const PageDirectory = arch.paging.PageDirectory;
 const std = @import("std");
 const log = std.log.scoped(.frame_allocator);
+pub const BitMap = @import("BitMap.zig").BitMap;
 
 const ListNodePtr = *allowzero ListNode;
 const ListNode = struct {

@@ -1,5 +1,6 @@
 const std = @import("std");
 const PAGE_SIZE = @import("arch").paging.PAGE_SIZE;
+pub const MemMapEntry = @import("../boot/mutliboot_header.zig").MemMapEntry;
 
 const Entry = struct {
     start: u32,
@@ -16,7 +17,7 @@ const RegionType = enum {
     Available,
 };
 
-pub const MemRegion = struct {
+pub const MemoryRegion = struct {
     start: usize,
     end: usize,
 
