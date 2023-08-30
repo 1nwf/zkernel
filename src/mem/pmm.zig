@@ -31,6 +31,14 @@ pub fn init(mem_map: []MemMapEntry, allocator: Allocator) !Self {
     };
 }
 
+pub fn allocRegion(self: *Self, addr: usize, size: usize) !void {
+    var start_bit = self.getBitFromAddr(addr) orelse return;
+    const end_bit = self.getBitFromAddr(addr + size) orelse return;
+    while (start_bit < end_bit) : (start_bit += 1) {
+        try self.bitmap.set(start_bit);
+    }
+}
+
 pub fn alloc(self: *Self) !usize {
     var bit_idx = try self.bitmap.setFirstFree();
     return self.getAddrFromBit(bit_idx) orelse error.OutOfMemory;
@@ -167,4 +175,26 @@ test "getAddrFromBit" {
     }
 
     try expect(pmm.getAddrFromBit(100) == null);
+}
+
+test "allocRegions" {
+    const expect = std.testing.expect;
+    var allocator = std.testing.allocator;
+    var mem_map = [_]MemMapEntry{
+        .{
+            .size = 24,
+            .base_addr = 0,
+            .length = PAGE_SIZE * 20,
+            .type = .Available,
+        },
+    };
+
+    var pmm = try init(&mem_map, allocator);
+    defer pmm.deinit();
+
+    var i: usize = 4;
+    try pmm.allocRegion(PAGE_SIZE * i, PAGE_SIZE * 2);
+    while (i < 2) : (i += 1) {
+        try expect(pmm.bitmap.isSet(i));
+    }
 }

@@ -13,9 +13,10 @@ const Self = @This();
 pmm: *FrameAllocator,
 page_directory: *pg.PageDirectory,
 
-pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: []MemoryRegion) Self {
+pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: []MemoryRegion) !Self {
     for (reserved) |res| {
         page_directory.mapRegions(res.start, res.start, res.size);
+        try pmm.allocRegion(res.start, res.size);
     }
 
     return .{
