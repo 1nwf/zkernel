@@ -6,66 +6,52 @@ const MemoryRegion = @import("memmap.zig").MemoryRegion;
 
 pub fn BitMap(comptime size: ?usize) type {
     return struct {
-        data: if (dynamic) []usize else [size.?]usize,
+        data: if (dynamic) []u8 else [size.?]u8,
         allocator: if (dynamic) Allocator else ?Allocator,
-
         const dynamic = size == null;
         const Self = @This();
-        const BITS_PER_ENTRY = @bitSizeOf(usize);
-        pub fn init(reserved: []MemoryRegion, allocator: if (dynamic) Allocator else ?Allocator, n: if (dynamic) usize else ?usize) !Self {
+        const BITS_PER_ENTRY = 8;
+        pub fn init(allocator: if (dynamic) Allocator else ?Allocator, n: if (dynamic) usize else ?usize) !Self {
             var bitmap: Self = undefined;
             if (dynamic) {
                 bitmap = Self{
-                    .data = try allocator.alloc(usize, n),
+                    .data = try allocator.alloc(u8, n),
                     .allocator = allocator,
                 };
                 @memset(bitmap.data, 0);
             } else {
                 bitmap = Self{
-                    .data = [_]usize{0} ** size.?,
+                    .data = [_]u8{0} ** size.?,
                     .allocator = null,
                 };
-            }
-
-            for (reserved) |region| {
-                var start = std.mem.alignBackward(usize, region.start, PAGE_SIZE);
-                const end = std.mem.alignForward(usize, region.end, PAGE_SIZE);
-                while (start < end) : (start += PAGE_SIZE) {
-                    bitmap.allocRegion(start) catch {};
-                }
             }
 
             return bitmap;
         }
 
-        pub fn allocRegion(self: *Self, addr: usize) !void {
-            const bit_idx: usize = addr / PAGE_SIZE;
-            try self.set(bit_idx);
-        }
-
-        pub fn alloc(self: *Self) !usize {
+        pub fn setFirstFree(self: *Self) !usize {
             for (self.data, 0..) |entry, idx| {
-                if (entry == std.math.maxInt(usize)) continue;
-                const bit_idx = @ctz(~entry);
+                if (entry == std.math.maxInt(u8)) continue;
+                const bit_idx = @ctz(~entry) + (idx * BITS_PER_ENTRY);
                 try self.set(bit_idx);
-                return (bit_idx + (idx * BITS_PER_ENTRY)) * PAGE_SIZE;
+                return bit_idx;
             }
             return error.OutOfMemory;
-        }
-
-        pub fn free(self: *Self, addr: usize) void {
-            const bit_idx = addr / PAGE_SIZE;
-            self.clear(bit_idx);
         }
 
         pub fn set(self: *Self, idx: usize) !void {
             const entry = idx / BITS_PER_ENTRY;
             if (entry >= self.data.len) return error.OutOfMemory;
-            self.data[entry] |= (@as(usize, 1) << @intCast(idx % BITS_PER_ENTRY));
+            self.data[entry] |= (@as(u8, 1) << @intCast(idx % BITS_PER_ENTRY));
         }
 
         pub fn clear(self: *Self, idx: usize) void {
-            self.data[idx / BITS_PER_ENTRY] &= ~(@as(usize, 1) << @intCast(idx % BITS_PER_ENTRY));
+            self.data[idx / BITS_PER_ENTRY] &= ~(@as(u8, 1) << @intCast(idx % BITS_PER_ENTRY));
+        }
+
+        pub fn isSet(self: *Self, bit: usize) bool {
+            const offset: u3 = @intCast(bit % BITS_PER_ENTRY);
+            return ((self.data[bit / BITS_PER_ENTRY] >> offset) & 1) == 1;
         }
 
         pub fn deinit(self: *Self) void {
@@ -78,71 +64,40 @@ pub fn BitMap(comptime size: ?usize) type {
 
 test "init" {
     const expect = std.testing.expect;
-    var reserved = [_]MemoryRegion{
-        MemoryRegion.init(0, 0x1000),
-        MemoryRegion.init(0x1000, 0x2000),
-        MemoryRegion.init(0x2000, 0x3000),
-        MemoryRegion.init(0x4000, 0x5000),
-    };
 
-    var bitmap = try BitMap(1).init(&reserved, null, null);
+    var bitmap = try BitMap(1).init(null, null);
 
-    try expect(bitmap.data[0] == 0b10111);
+    try expect(bitmap.data[0] == 0);
+    try expect(bitmap.data.len == 1);
 }
 
-test "alloc" {
+test "setFirstFree" {
     const expect = std.testing.expect;
-    var reserved = [_]MemoryRegion{};
 
-    var bitmap = try BitMap(1).init(&reserved, null, null);
+    var bitmap = try BitMap(2).init(null, null);
 
     comptime var i = 0;
-    inline while (i < 64) : (i += 1) {
-        _ = try bitmap.alloc();
+    inline while (i < 16) : (i += 1) {
+        _ = try bitmap.setFirstFree();
     }
 
-    try expect(bitmap.data[0] == std.math.maxInt(usize));
-    try std.testing.expectError(error.OutOfMemory, bitmap.alloc());
+    try expect(bitmap.data[0] == std.math.maxInt(u8));
+    try expect(bitmap.data[1] == std.math.maxInt(u8));
+    try std.testing.expectError(error.OutOfMemory, bitmap.setFirstFree());
 }
 
-test "free" {
+test "clear" {
     const expect = std.testing.expect;
-    var reserved = [_]MemoryRegion{};
+    var bitmap = try BitMap(2).init(null, null);
 
-    var bitmap = try BitMap(1).init(&reserved, null, null);
-
-    const addr = try bitmap.alloc();
-    try expect(bitmap.data[0] == 1);
-    try expect(addr == 0);
-
-    bitmap.free(addr);
-    try expect(bitmap.data[0] == 0);
-
-    const addrs = [_]usize{ try bitmap.alloc(), try bitmap.alloc(), try bitmap.alloc() };
-    try std.testing.expectEqual([_]usize{ 0, PAGE_SIZE, PAGE_SIZE * 2 }, addrs);
-    bitmap.free(addrs[1]);
-
-    try expect(bitmap.data[0] == 0b101);
-    try expect(try bitmap.alloc() == PAGE_SIZE);
-    try expect(bitmap.data[0] == 0b111);
-    bitmap.free(addrs[0]);
-    try expect(bitmap.data[0] == 0b110);
-    bitmap.free(addrs[1]);
-    try expect(bitmap.data[0] == 0b100);
-    bitmap.free(addrs[2]);
-    try expect(bitmap.data[0] == 0);
-}
-
-test "allocRegion" {
-    const expect = std.testing.expect;
-    var reserved = [_]MemoryRegion{};
-
-    var bitmap = try BitMap(2).init(&reserved, null, null);
-
-    const bit_index = (PAGE_SIZE * 64) * 2 - 1;
-    try bitmap.allocRegion(bit_index);
-    try expect(bitmap.data[1] == 1 << 63);
-
-    bitmap.clear(127);
-    try expect(bitmap.data[1] == 0);
+    comptime var i = 0;
+    inline while (i < 16) : (i += 1) {
+        _ = try bitmap.setFirstFree();
+        try expect(bitmap.isSet(i));
+    }
+    i -= 1;
+    inline while (i >= 0) : (i -= 1) {
+        bitmap.clear(i);
+        try expect(!bitmap.isSet(i));
+    }
 }
