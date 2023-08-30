@@ -36,7 +36,9 @@ extern const kernel_start: usize;
 extern const kernel_end: usize;
 
 var kernel_page_dir: pg.PageDirectory align(pg.PAGE_SIZE) = pg.PageDirectory.init();
+var buffer: [1024 * 1024]u8 = undefined;
 fn main(bootInfo: *boot.MultiBootInfo) !void {
+    var fixed_allocator = std.heap.FixedBufferAllocator.init(&buffer);
     gdt.init();
     int.init();
     serial.init();
@@ -51,11 +53,12 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     const mem_map: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
 
     var reserved_mem_regions = [_]mem.MemoryRegion{
-        mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end)),
-        mem.MemoryRegion.init(0xb8000, 0xb8000 + (25 * 80)), // frame buffer
+        mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end) - @intFromPtr(&kernel_start)),
+        mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
     };
 
-    var v = mem.vmm.init(&kernel_page_dir, mem_map, &reserved_mem_regions);
-    v.enablePaging();
+    var pmm = try mem.pmm.init(mem_map, fixed_allocator.allocator());
+    var vmm = mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions);
+    vmm.enablePaging();
     pci.init();
 }

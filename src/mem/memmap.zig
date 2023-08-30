@@ -1,5 +1,6 @@
 const std = @import("std");
 const PAGE_SIZE = @import("arch").paging.PAGE_SIZE;
+const arch = @import("arch");
 pub const MemMapEntry = @import("../boot/mutliboot_header.zig").MemMapEntry;
 
 const Entry = struct {
@@ -19,13 +20,12 @@ const RegionType = enum {
 
 pub const MemoryRegion = struct {
     start: usize,
-    end: usize,
+    size: usize,
 
-    /// start and end MUST be page aligned
-    pub fn init(start: usize, end: usize) @This() {
+    pub fn init(start: usize, size: usize) @This() {
         return .{
-            .start = std.mem.alignForward(usize, start, PAGE_SIZE),
-            .end = std.mem.alignForward(usize, end, PAGE_SIZE),
+            .start = std.mem.alignBackward(usize, start, PAGE_SIZE),
+            .size = std.mem.alignForward(usize, size, PAGE_SIZE),
         };
     }
 };
