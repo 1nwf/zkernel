@@ -59,6 +59,6 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
 
     var pmm = try mem.pmm.init(mem_map, fixed_allocator.allocator());
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions);
-    vmm.enablePaging();
+    _ = vmm;
     pci.init();
 }

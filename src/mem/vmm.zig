@@ -19,13 +19,11 @@ pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: [
         try pmm.allocRegion(res.start, res.size);
     }
 
+    page_directory.load();
+    pg.enable_paging();
+
     return .{
         .pmm = pmm,
         .page_directory = page_directory,
     };
-}
-
-pub fn enablePaging(self: *Self) void {
-    self.page_directory.load();
-    pg.enable_paging();
 }
