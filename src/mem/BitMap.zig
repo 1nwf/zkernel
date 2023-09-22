@@ -8,6 +8,7 @@ pub fn BitMap(comptime size: ?usize) type {
     return struct {
         data: if (dynamic) []u8 else [size.?]u8,
         allocator: if (dynamic) Allocator else ?Allocator,
+        free_bits: usize = if (size) |c| c * BITS_PER_ENTRY else 0,
         const dynamic = size == null;
         const Self = @This();
         const BITS_PER_ENTRY = 8;
@@ -17,6 +18,7 @@ pub fn BitMap(comptime size: ?usize) type {
                 bitmap = Self{
                     .data = try allocator.alloc(u8, n),
                     .allocator = allocator,
+                    .free_bits = n * BITS_PER_ENTRY,
                 };
                 @memset(bitmap.data, 0);
             } else {
@@ -30,22 +32,33 @@ pub fn BitMap(comptime size: ?usize) type {
         }
 
         pub fn setFirstFree(self: *Self) !usize {
+            if (self.free_bits == 0) return error.OutOfMemory;
             for (self.data, 0..) |entry, idx| {
                 if (entry == std.math.maxInt(u8)) continue;
                 const bit_idx = @ctz(~entry) + (idx * BITS_PER_ENTRY);
                 try self.set(bit_idx);
                 return bit_idx;
             }
-            return error.OutOfMemory;
+
+            unreachable;
+        }
+
+        // TODO
+        pub fn setContiguous(self: *Self, n: usize) !usize {
+            if (self.free_bits < n) return error.OutOfMemory;
         }
 
         pub fn set(self: *Self, idx: usize) !void {
             const entry = idx / BITS_PER_ENTRY;
-            if (entry >= self.data.len) return error.OutOfMemory;
+            if (entry >= self.data.len) return error.InvalidEntry;
+            self.free_bits -= 1;
             self.data[entry] |= (@as(u8, 1) << @intCast(idx % BITS_PER_ENTRY));
         }
 
-        pub fn clear(self: *Self, idx: usize) void {
+        pub fn clear(self: *Self, idx: usize) !void {
+            const entry = idx / BITS_PER_ENTRY;
+            if (entry >= self.data.len) return error.InvalidEntry;
+            self.free_bits += 1;
             self.data[idx / BITS_PER_ENTRY] &= ~(@as(u8, 1) << @intCast(idx % BITS_PER_ENTRY));
         }
 
@@ -97,7 +110,7 @@ test "clear" {
     }
     i -= 1;
     inline while (i >= 0) : (i -= 1) {
-        bitmap.clear(i);
+        try bitmap.clear(i);
         try expect(!bitmap.isSet(i));
     }
 }

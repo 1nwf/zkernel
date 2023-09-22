@@ -39,6 +39,11 @@ pub fn allocRegion(self: *Self, addr: usize, size: usize) !void {
     }
 }
 
+pub fn allocN(self: *Self, n: usize) !usize {
+    _ = self;
+    _ = n;
+}
+
 pub fn alloc(self: *Self) !usize {
     var bit_idx = try self.bitmap.setFirstFree();
     return self.getAddrFromBit(bit_idx) orelse error.OutOfMemory;
@@ -46,7 +51,7 @@ pub fn alloc(self: *Self) !usize {
 
 pub fn free(self: *Self, addr: usize) void {
     const bit_index = self.getBitFromAddr(addr) orelse return;
-    self.bitmap.clear(bit_index);
+    self.bitmap.clear(bit_index) catch @panic("bit_index out of range");
 }
 
 fn getAddrFromBit(self: *Self, bit_idx: usize) ?usize {
