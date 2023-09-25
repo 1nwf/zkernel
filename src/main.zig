@@ -16,7 +16,9 @@ const pci = @import("drivers/pci/pci.zig");
 const mem = @import("mem/mem.zig");
 
 export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
-    main(bootInfo) catch {};
+    main(bootInfo) catch |e| {
+        log.info("panic: {}", .{e});
+    };
     arch.halt();
 }
 
@@ -39,6 +41,7 @@ var kernel_page_dir: pg.PageDirectory align(pg.PAGE_SIZE) = pg.PageDirectory.ini
 var buffer: [1024 * 1024]u8 = undefined;
 fn main(bootInfo: *boot.MultiBootInfo) !void {
     var fixed_allocator = std.heap.FixedBufferAllocator.init(&buffer);
+    var allocator = fixed_allocator.allocator();
     gdt.init();
     int.init();
     serial.init();
@@ -57,8 +60,8 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
         mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
     };
 
-    var pmm = try mem.pmm.init(mem_map, fixed_allocator.allocator());
-    var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions);
+    var pmm = try mem.pmm.init(mem_map, allocator);
+    var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
     pci.init();
 }

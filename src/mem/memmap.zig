@@ -28,4 +28,8 @@ pub const MemoryRegion = struct {
             .size = std.mem.alignForward(usize, size, PAGE_SIZE),
         };
     }
+
+    pub fn end(self: *const @This()) usize {
+        return self.start + self.size;
+    }
 };

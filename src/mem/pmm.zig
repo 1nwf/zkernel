@@ -69,6 +69,10 @@ fn getAddrFromBit(self: *Self, bit_idx: usize) ?usize {
     return null;
 }
 
+pub fn hasCapacity(self: *Self, n: usize) bool {
+    return self.bitmap.hasCapacity(n);
+}
+
 fn getBitFromAddr(self: *Self, addr: usize) ?usize {
     var bit_index: usize = 0;
     for (self.memory_regions) |region| {

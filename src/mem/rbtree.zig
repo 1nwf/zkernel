@@ -207,11 +207,19 @@ pub fn Tree(
         }
 
         // finds the leftMost node that satisfies the matcher
-        pub fn find(self: *Self, comptime matcher: fn (value: T) bool) ?*NodeType {
+        pub fn find(self: *Self, comptime Matcher: type, matcher: Matcher) ?*NodeType {
+            comptime {
+                if (!@hasDecl(Matcher, "match")) {
+                    @compileError("missing match function");
+                }
+                if (@TypeOf(Matcher.match) != fn (*const Matcher, *const T) bool) {
+                    @compileError("invalid match function signature");
+                }
+            }
             var node = self.head;
             var prev: ?*NodeType = null;
             while (node) |n| {
-                if (matcher(n.data)) {
+                if (matcher.match(&n.data)) {
                     prev = n;
                     node = n.leftChild();
                 } else {
@@ -444,22 +452,20 @@ test "find" {
     try tree.insert(85);
     try tree.insert(93);
 
-    const matcher = struct {
-        pub fn find(a: usize) bool {
-            return a > 90;
+    const Matcher = struct {
+        size: usize,
+        fn new(size: usize) @This() {
+            return .{ .size = size };
         }
-    }.find;
+        pub fn match(self: *const @This(), a: *const usize) bool {
+            return a.* > self.size;
+        }
+    };
 
-    var node = tree.find(matcher) orelse @panic("node not found");
+    var node = tree.find(Matcher, Matcher.new(90)) orelse @panic("node not found");
     try expectEq(node.data, 93);
 
-    const matcher2 = struct {
-        pub fn find(a: usize) bool {
-            return a > 50;
-        }
-    }.find;
-
-    node = tree.find(matcher2) orelse @panic("node not found");
+    node = tree.find(Matcher, Matcher.new(50)) orelse @panic("node not found");
     try expectEq(node.data, 52);
 }
 
@@ -478,17 +484,17 @@ test "delete" {
     try tree.insert(85);
     try tree.insert(93);
 
-    const matcher = struct {
-        pub fn find(comptime a: usize) fn (b: usize) bool {
-            return struct {
-                fn match(val: usize) bool {
-                    return val > a;
-                }
-            }.match;
+    const Matcher = struct {
+        size: usize,
+        fn new(size: usize) @This() {
+            return .{ .size = size };
         }
-    }.find;
+        pub fn match(self: *const @This(), a: *const usize) bool {
+            return a.* > self.size;
+        }
+    };
 
-    const node = tree.find(matcher(51)) orelse @panic("could not find node");
+    const node = tree.find(Matcher, Matcher.new(51)) orelse @panic("could not find node");
     try expectEq(node.data, 52);
 
     tree.delete(node);
