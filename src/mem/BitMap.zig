@@ -6,24 +6,26 @@ const MemoryRegion = @import("memmap.zig").MemoryRegion;
 
 pub fn BitMap(comptime size: ?usize) type {
     return struct {
-        data: if (dynamic) []u8 else [size.?]u8,
-        allocator: if (dynamic) Allocator else ?Allocator,
-        free_bits: usize = if (size) |c| c * BITS_PER_ENTRY else 0,
+        const EntryType = u8;
+        const BITS_PER_ENTRY = @bitSizeOf(EntryType);
         const dynamic = size == null;
         const Self = @This();
-        const BITS_PER_ENTRY = 8;
+
+        data: if (dynamic) []EntryType else [size.?]EntryType,
+        allocator: if (dynamic) Allocator else ?Allocator,
+        free_bits: usize = if (size) |c| c * BITS_PER_ENTRY else 0,
         pub fn init(allocator: if (dynamic) Allocator else ?Allocator, n: if (dynamic) usize else ?usize) !Self {
             var bitmap: Self = undefined;
             if (dynamic) {
                 bitmap = Self{
-                    .data = try allocator.alloc(u8, n),
+                    .data = try allocator.alloc(EntryType, n),
                     .allocator = allocator,
                     .free_bits = n * BITS_PER_ENTRY,
                 };
                 @memset(bitmap.data, 0);
             } else {
                 bitmap = Self{
-                    .data = [_]u8{0} ** size.?,
+                    .data = [_]EntryType{0} ** size.?,
                     .allocator = null,
                 };
             }
@@ -34,7 +36,7 @@ pub fn BitMap(comptime size: ?usize) type {
         pub fn setFirstFree(self: *Self) !usize {
             if (self.free_bits == 0) return error.OutOfMemory;
             for (self.data, 0..) |entry, idx| {
-                if (entry == std.math.maxInt(u8)) continue;
+                if (entry == std.math.maxInt(EntryType)) continue;
                 const bit_idx = @ctz(~entry) + (idx * BITS_PER_ENTRY);
                 try self.set(bit_idx);
                 return bit_idx;
@@ -43,23 +45,28 @@ pub fn BitMap(comptime size: ?usize) type {
             unreachable;
         }
 
+        pub fn hasCapacity(self: *Self, n: usize) bool {
+            return self.free_bits >= n;
+        }
+
         // TODO
         pub fn setContiguous(self: *Self, n: usize) !usize {
             if (self.free_bits < n) return error.OutOfMemory;
+            unreachable;
         }
 
         pub fn set(self: *Self, idx: usize) !void {
             const entry = idx / BITS_PER_ENTRY;
             if (entry >= self.data.len) return error.InvalidEntry;
             self.free_bits -= 1;
-            self.data[entry] |= (@as(u8, 1) << @intCast(idx % BITS_PER_ENTRY));
+            self.data[entry] |= (@as(EntryType, 1) << @intCast(idx % BITS_PER_ENTRY));
         }
 
         pub fn clear(self: *Self, idx: usize) !void {
             const entry = idx / BITS_PER_ENTRY;
             if (entry >= self.data.len) return error.InvalidEntry;
             self.free_bits += 1;
-            self.data[idx / BITS_PER_ENTRY] &= ~(@as(u8, 1) << @intCast(idx % BITS_PER_ENTRY));
+            self.data[idx / BITS_PER_ENTRY] &= ~(@as(EntryType, 1) << @intCast(idx % BITS_PER_ENTRY));
         }
 
         pub fn isSet(self: *Self, bit: usize) bool {
