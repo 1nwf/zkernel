@@ -12,6 +12,7 @@ const heap = @import("heap/heap.zig");
 const pg = arch.paging;
 const boot = @import("boot/mutliboot_header.zig");
 const pci = @import("drivers/pci/pci.zig");
+const debug = @import("debug/debug.zig");
 
 const mem = @import("mem/mem.zig");
 
@@ -31,6 +32,7 @@ pub const std_options = struct {
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     serial.writeln("panic: {s}", .{msg});
+    debug.printStackTrace();
     arch.halt();
 }
 
@@ -63,5 +65,12 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     var pmm = try mem.pmm.init(mem_map, allocator);
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
+
+    test_panic();
+
     pci.init();
+}
+
+noinline fn test_panic() void {
+    @panic("panic");
 }

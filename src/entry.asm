@@ -18,7 +18,8 @@ header_end:
 section .text
 _start:
 	mov esp, kernel_stack_end
-	mov ebp, esp
+	xor ebp, ebp ; set ebp to zero to signal last frame when walking the stack
+	push ebp
 	push ebx
 	call kmain
 	jmp $
