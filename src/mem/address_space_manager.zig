@@ -48,12 +48,12 @@ pub fn allocate(self: *Self, size: usize) !MemoryRegion {
     } = .{ .size = aligned_size };
 
     const node = self.tree.find(@TypeOf(matcher), matcher) orelse return error.OutOfMemory;
-    const alloc_end = node.data.start + size;
-    const region = MemoryRegion.init(node.data.start, alloc_end);
+    const alloc_end = node.data.start + aligned_size;
+    const region = MemoryRegion.init(node.data.start, aligned_size);
     self.tree.delete(node);
     errdefer self.tree.insert(node.data) catch {};
     if (alloc_end != node.data.end()) {
-        try self.insert(MemoryRegion.init(alloc_end, node.data.end() - alloc_end));
+        try self.insert(MemoryRegion.init(alloc_end, node.data.size - aligned_size));
     }
 
     return region;
