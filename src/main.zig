@@ -41,6 +41,14 @@ extern const kernel_end: usize;
 
 var kernel_page_dir: pg.PageDirectory align(pg.PAGE_SIZE) = pg.PageDirectory.init();
 var buffer: [1024 * 1024]u8 = undefined;
+
+pub const os = struct {
+    pub const heap = struct {
+        pub const page_allocator: std.mem.Allocator = undefined;
+    };
+    pub const system = struct {};
+};
+
 fn main(bootInfo: *boot.MultiBootInfo) !void {
     var fixed_allocator = std.heap.FixedBufferAllocator.init(&buffer);
     var allocator = fixed_allocator.allocator();
@@ -66,11 +74,5 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
-    test_panic();
-
-    pci.init();
-}
-
-noinline fn test_panic() void {
-    @panic("panic");
+    try pci.init(allocator);
 }
