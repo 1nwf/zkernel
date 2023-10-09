@@ -82,30 +82,12 @@ pub fn build(b: *std.Build) !void {
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_arch_tests.step);
 
-    const grub_build_step = GrubBuildStep.init(b, exe.out_filename);
-
-    const run_qemu = b.addSystemCommand(&.{
-        "qemu-system-i386",
-        "-boot",
-        "d",
-        "-cdrom",
-        "iso/os.iso",
-        "-m",
-        "128M",
-        "-serial",
-        "stdio",
-    });
-    run_qemu.step.dependOn(&grub_build_step.step);
-
-    const run_step = b.step("run", "run os in qemu");
-    run_step.dependOn(&run_qemu.step);
+    const kernel_bin = b.fmt("{s}/{s}", .{ b.exe_dir, exe.out_filename });
 
     const qemu_monitor = b.addSystemCommand(&.{
         "qemu-system-i386",
-        "-boot",
-        "d",
-        "-cdrom",
-        "iso/os.iso",
+        "-kernel",
+        kernel_bin,
         "-m",
         "128M",
         "-d",
@@ -115,9 +97,21 @@ pub fn build(b: *std.Build) !void {
         "-monitor",
         "stdio",
     });
-    qemu_monitor.step.dependOn(&grub_build_step.step);
     const monitor = b.step("monitor", "runs os with qemu monitor");
     monitor.dependOn(&qemu_monitor.step);
+
+    const run_qemu = b.addSystemCommand(&.{
+        "qemu-system-i386",
+        "-kernel",
+        kernel_bin,
+        "--serial",
+        "stdio",
+        "-m",
+        "128M",
+    });
+    run_qemu.step.dependOn(b.default_step);
+    const run = b.step("run", "run kernel in qemu");
+    run.dependOn(&run_qemu.step);
 }
 
 fn replaceExtension(b: *std.Build, path: []const u8, new_extension: []const u8) []const u8 {
