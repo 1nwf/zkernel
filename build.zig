@@ -99,6 +99,25 @@ pub fn build(b: *std.Build) !void {
 
     const run_step = b.step("run", "run os in qemu");
     run_step.dependOn(&run_qemu.step);
+
+    const qemu_monitor = b.addSystemCommand(&.{
+        "qemu-system-i386",
+        "-boot",
+        "d",
+        "-cdrom",
+        "iso/os.iso",
+        "-m",
+        "128M",
+        "-d",
+        "guest_errors",
+        "-no-reboot",
+        "-no-shutdown",
+        "-monitor",
+        "stdio",
+    });
+    qemu_monitor.step.dependOn(&grub_build_step.step);
+    const monitor = b.step("monitor", "runs os with qemu monitor");
+    monitor.dependOn(&qemu_monitor.step);
 }
 
 fn replaceExtension(b: *std.Build, path: []const u8, new_extension: []const u8) []const u8 {
