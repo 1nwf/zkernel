@@ -81,6 +81,24 @@ pub fn build(b: *std.Build) !void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_arch_tests.step);
+
+    const grub_build_step = GrubBuildStep.init(b, exe.out_filename);
+
+    const run_qemu = b.addSystemCommand(&.{
+        "qemu-system-i386",
+        "-boot",
+        "d",
+        "-cdrom",
+        "iso/os.iso",
+        "-m",
+        "128M",
+        "-serial",
+        "stdio",
+    });
+    run_qemu.step.dependOn(&grub_build_step.step);
+
+    const run_step = b.step("run", "run os in qemu");
+    run_step.dependOn(&run_qemu.step);
 }
 
 fn replaceExtension(b: *std.Build, path: []const u8, new_extension: []const u8) []const u8 {
@@ -104,3 +122,70 @@ fn compileNasmSource(b: *std.Build, comptime nasm_sources: []const []const u8) [
     b.default_step.dependOn(compile_step);
     return outputSources;
 }
+
+const GrubBuildStep = struct {
+    b: *std.Build,
+    step: std.Build.Step,
+    exe_bin: []const u8,
+    exe_dir: []const u8,
+
+    fn init(b: *std.Build, exe_bin: []const u8) *GrubBuildStep {
+        var gbstep = b.allocator.create(@This()) catch unreachable;
+        gbstep.* = .{
+            .exe_dir = b.exe_dir,
+            .exe_bin = exe_bin,
+            .step = std.Build.Step.init(.{
+                .id = .custom,
+                .name = "build grub image",
+                .makeFn = GrubBuildStep.makeFn,
+                .owner = b,
+            }),
+            .b = b,
+        };
+
+        gbstep.step.dependOn(b.default_step);
+        return gbstep;
+    }
+
+    fn makeFn(step: *std.Build.Step, _: *std.Progress.Node) anyerror!void {
+        const self = @fieldParentPtr(@This(), "step", step);
+        const exe_dir = try std.fs.openDirAbsolute(self.exe_dir, .{});
+        const iso_dir = try std.fs.cwd().openDir("iso/boot", .{});
+        std.fs.cwd().deleteFile("iso/os.iso") catch |e| {
+            switch (e) {
+                error.FileNotFound => {},
+                else => return e,
+            }
+        };
+        try std.fs.Dir.copyFile(exe_dir, self.exe_bin, iso_dir, "kernel.elf", .{});
+        try self.build_iso_img();
+    }
+
+    fn build_iso_img(self: *@This()) !void {
+        var child = std.ChildProcess.init(
+            &.{
+                "grub-mkrescue",
+                "-o",
+                "iso/os.iso",
+                "iso/",
+            },
+            self.b.allocator,
+        );
+
+        child.stdin_behavior = .Ignore;
+        child.stdout_behavior = .Ignore;
+        child.stderr_behavior = .Ignore;
+        child.env_map = self.b.env_map;
+
+        switch (try child.spawnAndWait()) {
+            .Exited => |code| {
+                if (code != 0) {
+                    return error.ExitCodeFailure;
+                }
+            },
+            .Signal, .Stopped, .Unknown => |_| {
+                return error.ProcessTerminated;
+            },
+        }
+    }
+};
