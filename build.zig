@@ -84,34 +84,15 @@ pub fn build(b: *std.Build) !void {
 
     const kernel_bin = b.fmt("{s}/{s}", .{ b.exe_dir, exe.out_filename });
 
-    const qemu_monitor = b.addSystemCommand(&.{
-        "qemu-system-i386",
-        "-kernel",
-        kernel_bin,
-        "-m",
-        "128M",
-        "-d",
-        "guest_errors",
-        "-no-reboot",
-        "-no-shutdown",
-        "-monitor",
-        "stdio",
-    });
-    const monitor = b.step("monitor", "runs os with qemu monitor");
-    monitor.dependOn(&qemu_monitor.step);
+    const nodisplay = b.option(bool, "no-display", "disable qemu display") orelse false;
+    const run_qemu = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "--serial", "stdio" });
+    const run_qemu_monitor = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "-d", "int,guest_errors", "-no-reboot", "-no-shutdown", "-monitor", "stdio" });
 
-    const run_qemu = b.addSystemCommand(&.{
-        "qemu-system-i386",
-        "-kernel",
-        kernel_bin,
-        "--serial",
-        "stdio",
-        "-m",
-        "128M",
-    });
-    run_qemu.step.dependOn(b.default_step);
+    const monitor = b.step("monitor", "runs os with qemu monitor");
+    monitor.dependOn(run_qemu_monitor.step);
+
     const run = b.step("run", "run kernel in qemu");
-    run.dependOn(&run_qemu.step);
+    run.dependOn(run_qemu.step);
 }
 
 fn replaceExtension(b: *std.Build, path: []const u8, new_extension: []const u8) []const u8 {
@@ -200,5 +181,26 @@ const GrubBuildStep = struct {
                 return error.ProcessTerminated;
             },
         }
+    }
+};
+
+const RunQemuStep = struct {
+    step: *std.Build.Step,
+    b: *std.Build,
+
+    const Self = @This();
+    fn init(b: *std.Build, kernel_path: []const u8, nodisplay: bool, options: ?[]const []const u8) Self {
+        var sys_cmd = b.addSystemCommand(&.{ "qemu-system-i386", "-kernel", kernel_path, "-m", "128M", "-nic", "user,model=virtio" });
+        sys_cmd.step.dependOn(b.default_step);
+        if (nodisplay) {
+            sys_cmd.addArgs(&.{ "--display", "none" });
+        }
+        if (options) |op| {
+            sys_cmd.addArgs(op);
+        }
+        return .{
+            .step = &sys_cmd.step,
+            .b = b,
+        };
     }
 };
