@@ -15,12 +15,11 @@ const PciLocation = packed struct(u16) {
 
     const Self = @This();
     pub fn readConfig(self: Self, comptime reg: PciRegisters) reg.getWidth() {
-        const addr: PciAddress = .{
+        var addr: PciAddress = .{
             .register_offset = reg,
             .location = self,
         };
-        arch.out(CONFIG_ADDRESS, addr.asBits());
-        return arch.in(CONFIG_DATA, reg.getWidth());
+        return addr.configRead(reg.getWidth());
     }
 };
 
@@ -40,23 +39,6 @@ const PciAddress = packed struct(u32) {
         return arch.in(CONFIG_DATA, size);
     }
 };
-
-pub fn configRead(config: PciAddress) u32 {
-    arch.out(CONFIG_ADDRESS, config.asBits());
-    return arch.in(CONFIG_DATA, u32);
-}
-
-fn readConfig(dev: u8, bus: u8, func: u8, comptime reg: PciRegisters) reg.getWidth() {
-    const addr = PciAddress{
-        .register_offset = reg,
-        .device = @intCast(dev),
-        .function = @intCast(func),
-        .bus = bus,
-    };
-
-    arch.out(CONFIG_ADDRESS, addr.asBits());
-    return arch.in(CONFIG_DATA, reg.getWidth());
-}
 
 // https://github.com/ZystemOS/pluto/blob/develop/src/kernel/arch/x86/pci.zig#L20
 pub const PciRegisters = enum(u8) {
@@ -103,9 +85,19 @@ pub const PciRegisters = enum(u8) {
 
 pub fn init(allocator: std.mem.Allocator) !void {
     const devices = try getAllDevices(allocator);
-    for (devices) |d| {
-        log.info("{s}", .{d.getTypeName()});
+    var ide_device: *Device = undefined;
+    for (devices) |*d| {
+        if (d.location.readConfig(.ClassCode) == 1 and d.location.readConfig(.Subclass) == 1) {
+            ide_device = d;
+        }
+
+        const vendor = d.location.readConfig(.VenderId);
+        const deviceid = d.location.readConfig(.DeviceId);
+        const subsystem = d.location.readConfig(.SubsystemId);
+        log.info("{s} - {x} -- {x} -- {}", .{ d.getTypeName(), vendor, deviceid, subsystem });
     }
+
+    ide.init(ide_device);
 }
 
 pub const Device = struct {
@@ -119,54 +111,31 @@ pub const Device = struct {
     }
 };
 
-fn getStorageDevice() ?Device {
-    var dev: u5 = 0;
-    while (dev < 8) : (dev += 1) {
-        var bus: u8 = 0;
-        while (bus < 8) : (bus += 1) {
-            var func: u3 = 0;
-            while (func < 7) : (func += 1) {
-                const loc = PciLocation{
-                    .function = func,
-                    .bus = bus,
-                    .dev = dev,
-                };
-
-                const class = loc.readConfig(.ClassCode);
-                const subclass = loc.readConfig(.Subclass);
-                if (class != 1 or subclass != 1) {
-                    continue;
-                }
-                var info = deviceInfo.getDeviceType(class, subclass);
-                log.info("info: {s}", .{info});
-
-                return .{
-                    .location = loc,
-                    .class = class,
-                    .subclass = subclass,
-                };
-            }
-        }
-    }
-
-    return null;
-}
-
 fn getAllDevices(allocator: std.mem.Allocator) ![]Device {
+    const readFunction = struct {
+        fn readFunction(func: u8, dev: u8, bus: u8) ?Device {
+            const loc = PciLocation{ .function = @intCast(func), .device = @intCast(dev), .bus = @intCast(bus) };
+            const class = loc.readConfig(.ClassCode);
+            const subclass = loc.readConfig(.Subclass);
+            if (class == 0xff) {
+                return null;
+            }
+            return Device{ .location = loc, .class = class, .subclass = subclass };
+        }
+    }.readFunction;
+
     var devices = std.ArrayList(Device).init(allocator);
     var bus: u8 = 0;
     while (bus < 255) : (bus += 1) {
-        var dev: u5 = 0;
+        var dev: u8 = 0;
         while (dev < 31) : (dev += 1) {
-            var func: u3 = 0;
-            while (func < 7) : (func += 1) {
-                const loc = PciLocation{ .function = func, .device = dev, .bus = bus };
-                const class = loc.readConfig(.ClassCode);
-                const subclass = loc.readConfig(.Subclass);
-                if (class == 0xff) {
-                    break;
+            var func: u8 = 0;
+            const pci_dev = readFunction(func, dev, bus) orelse continue;
+            try devices.append(pci_dev);
+            if (pci_dev.location.readConfig(.HeaderType) == 0x80) {
+                while (func < 8) : (func += 1) {
+                    try devices.append(readFunction(func, dev, bus) orelse continue);
                 }
-                try devices.append(Device{ .location = loc, .class = class, .subclass = subclass });
             }
         }
     }

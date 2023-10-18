@@ -7,8 +7,10 @@ pub const Access = packed struct {
     dpl: u2, // descriptor privelage level
     present: u1,
 
-    const Code = Access{ .present = 1, .dpl = 0, .type = 1, .exec = 1, .dc = 0, .rw = 1, .access = 0 };
-    const Data = Access{ .present = 1, .dpl = 0, .type = 1, .exec = 0, .dc = 0, .rw = 1, .access = 0 };
+    const KernelCode = Access{ .present = 1, .dpl = 0, .type = 1, .exec = 1, .dc = 0, .rw = 1, .access = 0 };
+    const KernelData = Access{ .present = 1, .dpl = 0, .type = 1, .exec = 0, .dc = 0, .rw = 1, .access = 0 };
+    const UserCode = Access{ .present = 1, .dpl = 3, .type = 1, .exec = 1, .dc = 0, .rw = 1, .access = 0 };
+    const UserData = Access{ .present = 1, .dpl = 3, .type = 1, .exec = 0, .dc = 0, .rw = 1, .access = 0 };
 };
 
 const Flags = packed struct {
@@ -38,32 +40,33 @@ pub const Entry = packed struct {
     }
 
     fn init(base: u32, limit: u20, access: Access, flags: Flags) Entry {
-        // zig fmt: off
         return Entry{
             .limit_low = @truncate(limit & 0xFFFF),
             .limit_high = @truncate(limit >> 16),
-            .base_low = @truncate( base & ~@as(u32, (0xFF << 24))),
+            .base_low = @truncate(base & ~@as(u32, (0xFF << 24))),
             .base_high = @truncate(base >> 24),
             .access = access,
-            .flags = flags
+            .flags = flags,
         };
-        // zig fmt: on
     }
 };
 
-pub const CodeSegment = Entry.init(0, 0xFFFFF, Access.Code, .{ .is_32bit = 1, .long_mode = 0, .granularity = 1 });
-pub const DataSegment = Entry.init(0, 0xFFFFF, Access.Data, .{ .is_32bit = 1, .long_mode = 0, .granularity = 1 });
+pub const KernelCodeSegment = Entry.init(0, 0xFFFFF, Access.KernelCode, .{ .is_32bit = 1, .long_mode = 0, .granularity = 1 });
+pub const KernelDataSegment = Entry.init(0, 0xFFFFF, Access.KernelData, .{ .is_32bit = 1, .long_mode = 0, .granularity = 1 });
 
-pub const GDT = [_]Entry{ Entry.empty(), CodeSegment, DataSegment };
+pub const UserCodeSegment = Entry.init(0, 0xFFFFF, Access.UserCode, .{ .is_32bit = 1, .long_mode = 0, .granularity = 1 });
+pub const UserDataSegment = Entry.init(0, 0xFFFFF, Access.UserData, .{ .is_32bit = 1, .long_mode = 0, .granularity = 1 });
+
+pub const GDT = [_]Entry{ Entry.empty(), KernelCodeSegment, KernelDataSegment, UserCodeSegment, UserDataSegment };
 
 pub const GDTR = extern struct {
     size: u16,
-    base: usize align(2),
-    fn init(base: u32, size: u16) GDTR {
+    base: *const [5]Entry align(2),
+    fn init(comptime base: *const [5]Entry, size: u16) GDTR {
         return GDTR{ .base = base, .size = size };
     }
 
-    export fn load(self: *GDTR) void {
+    export fn load(self: *const GDTR) void {
         asm volatile (
             \\ cli
             \\ lgdt (%[addr])
@@ -74,10 +77,9 @@ pub const GDTR = extern struct {
     }
 };
 
-var gdtr = GDTR.init(0, @sizeOf(@TypeOf(GDT)) - 1);
+pub const gdtr: GDTR = GDTR.init(&GDT, @sizeOf(@TypeOf(GDT)) - 1);
 
 pub fn init() void {
-    gdtr.base = @intFromPtr(&GDT);
     gdtr.load();
 
     asm volatile (
@@ -94,7 +96,7 @@ pub fn init() void {
 }
 
 pub fn storedGDT() @TypeOf(GDT) {
-    var ptr = GDTR.init(0, 0);
+    var ptr: GDTR = undefined;
     asm volatile (
         \\ sgdtl %[val]
         : [val] "=m" (ptr),

@@ -56,7 +56,6 @@ pub fn setExceptionHandler(comptime idx: usize, comptime h: Handler) void {
     interrupt_handlers[idx] = h;
 }
 
-// zig fmt: off
 pub const Context = extern struct {
     ds: u32,
     edi: u32,
@@ -74,5 +73,5 @@ pub const Context = extern struct {
     cs: u32, // code segment
     eflags: u32, // cpu flags
     uesp: u32, // stack pointer of interrupt code
-    ss: u32 // stack segment
+    ss: u32, // stack segment
 };

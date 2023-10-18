@@ -15,8 +15,8 @@ pmm: *FrameAllocator,
 page_directory: *pg.PageDirectory,
 address_space_manager: AddressSpaceManager,
 
-pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: []MemoryRegion, allocator: std.mem.Allocator) !Self {
-    var adm = AddressSpaceManager.init(allocator);
+pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: []MemoryRegion, a: std.mem.Allocator) !Self {
+    var adm = AddressSpaceManager.init(a);
     var region = MemoryRegion.init(pg.PAGE_SIZE, std.mem.alignBackward(usize, std.math.maxInt(usize), pg.PAGE_SIZE) - pg.PAGE_SIZE);
     try adm.insert(region);
 
@@ -67,7 +67,7 @@ fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, _: usize) void {
     _ = self;
 }
 
-pub fn toAllocator(self: *Self) std.mem.Allocator {
+pub fn allocator(self: *Self) std.mem.Allocator {
     return std.mem.Allocator{
         .ptr = self,
         .vtable = &.{

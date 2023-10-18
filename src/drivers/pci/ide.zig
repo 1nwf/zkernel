@@ -67,29 +67,35 @@ const Channel = struct {
     bmide: u16, // bust master ide
 
     const Self = @This();
+
+    fn read(self: *Self, comptime reg: Registers) u32 {
+        return arch.in(self.base + @intFromEnum(reg), u32);
+    }
 };
 
-pub fn init(dev: pci.Device) void {
+pub fn init(dev: *pci.Device) void {
+    log.info("Initializing IDE Device", .{});
     const bar0 = dev.location.readConfig(.BaseAddr0);
     const bar1 = dev.location.readConfig(.BaseAddr1);
     const bar2 = dev.location.readConfig(.BaseAddr2);
     const bar3 = dev.location.readConfig(.BaseAddr3);
     const bar4 = dev.location.readConfig(.BaseAddr4);
-
     const progif = dev.location.readConfig(.ProgrammingInterface);
-    std.log("progif: {b}", .{progif});
 
+    log.info("progif: {b}", .{progif});
+
+    // if bars 0-3 are 0, that means ide is running in compatibility mode
     var primary = Channel{
         .base = if (bar0 != 0) @intCast(bar0) else 0x1f0,
-        .control = if (bar1 != 0) @intCast(bar1) else 0x1F7,
+        .control = if (bar1 != 0) @intCast(bar1) else 0x3F6,
         .bmide = @intCast(bar4),
     };
-    _ = primary;
     const secondary = Channel{
-        .base = if (bar2 != 0) @intCast(bar2) else 0x1f0,
-        .control = if (bar3 != 0) @intCast(bar3) else 0x1F7,
+        .base = if (bar2 != 0) @intCast(bar2) else 0x170,
+        .control = if (bar3 != 0) @intCast(bar3) else 0x376,
         .bmide = @intCast(bar4 + 8),
     };
 
+    _ = primary;
     _ = secondary;
 }
