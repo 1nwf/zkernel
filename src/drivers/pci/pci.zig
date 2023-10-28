@@ -1,9 +1,10 @@
 const std = @import("std");
-const arch = @import("arch");
+const io = @import("arch").io;
 const writeln = @import("root").serial.writeln;
 const deviceInfo = @import("devices.zig");
 const ide = @import("ide.zig");
 const log = std.log.scoped(.pci);
+const rtl8139 = @import("../net/rtl8139.zig");
 
 const CONFIG_ADDRESS = 0xCF8;
 const CONFIG_DATA = 0xCFC;
@@ -35,8 +36,8 @@ const PciAddress = packed struct(u32) {
 
     const Self = @This();
     fn configRead(self: *Self, comptime size: type) size {
-        arch.out(CONFIG_ADDRESS, self.asBits());
-        return arch.in(CONFIG_DATA, size);
+        io.out(CONFIG_ADDRESS, self.asBits());
+        return io.in(CONFIG_DATA, size);
     }
 };
 
@@ -85,19 +86,15 @@ pub const PciRegisters = enum(u8) {
 
 pub fn init(allocator: std.mem.Allocator) !void {
     const devices = try getAllDevices(allocator);
-    var ide_device: *Device = undefined;
     for (devices) |*d| {
-        if (d.location.readConfig(.ClassCode) == 1 and d.location.readConfig(.Subclass) == 1) {
-            ide_device = d;
-        }
-
         const vendor = d.location.readConfig(.VenderId);
         const deviceid = d.location.readConfig(.DeviceId);
-        const subsystem = d.location.readConfig(.SubsystemId);
-        log.info("{s} - {x} -- {x} -- {}", .{ d.getTypeName(), vendor, deviceid, subsystem });
+        if (vendor == 0x10ec and deviceid == 0x8139) {
+            _ = try rtl8139.init(d);
+        }
+        // const subsystem = d.location.readConfig(.SubsystemId);
+        // log.info("{s} - {x} -- {x} -- {}", .{ d.getTypeName(), vendor, deviceid, subsystem });
     }
-
-    ide.init(ide_device);
 }
 
 pub const Device = struct {
@@ -108,6 +105,34 @@ pub const Device = struct {
     const Self = @This();
     fn getTypeName(self: *const Self) []const u8 {
         return deviceInfo.getDeviceType(self.class, self.subclass);
+    }
+
+    pub const Bar = union(enum) { Empty, Io: u16, Mem: u32 };
+
+    pub fn read_bar(self: *const Self, comptime idx: usize) Bar {
+        const reg: PciRegisters = switch (idx) {
+            0 => .BaseAddr0,
+            1 => .BaseAddr1,
+            2 => .BaseAddr2,
+            3 => .BaseAddr3,
+            4 => .BaseAddr4,
+            5 => .BaseAddr5,
+            else => @compileError("access to invalid bar"),
+        };
+
+        const value = self.location.readConfig(reg);
+        if (value == 0) return .Empty;
+        const is_io = value & 1 == 1;
+        if (is_io) {
+            const io_addr = value & ~@as(u32, 0b11);
+            return Bar{ .Io = @intCast(io_addr) };
+        }
+
+        const is_64bit = value & 4 == 4;
+        if (is_64bit) return .Empty;
+
+        const mem_addr = value & ~@as(u32, 0x8);
+        return Bar{ .Mem = mem_addr };
     }
 };
 
