@@ -25,289 +25,140 @@ pub export fn isr_common() callconv(.Naked) void {
     );
 }
 
-pub export fn isr0() void {
+pub fn isr(comptime num: usize) void {
     asm volatile (
         \\ cli
-        \\ push $0
-        \\ push $0
+        \\ push $0 
+        \\ push %[num]
         \\ jmp isr_common
+        :
+        : [num] "i" (num),
     );
+}
+
+pub export fn isr0() void {
+    isr(0);
 }
 
 pub export fn isr1() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $1
-        \\ jmp isr_common
-    );
+    isr(1);
 }
 
 pub export fn isr2() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $2
-        \\ jmp isr_common
-    );
+    isr(2);
 }
 
 pub export fn isr3() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $3
-        \\ jmp isr_common
-    );
+    isr(3);
 }
 
 pub export fn isr4() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $4
-        \\ jmp isr_common
-    );
+    isr(4);
 }
 
 pub export fn isr5() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $5
-        \\ jmp isr_common
-    );
+    isr(5);
 }
 
 pub export fn isr6() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $6
-        \\ jmp isr_common
-    );
+    isr(6);
 }
 
 pub export fn isr7() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $7
-        \\ jmp isr_common
-    );
+    isr(7);
 }
 
 pub export fn isr8() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $8
-        \\ jmp isr_common
-    );
+    isr(8);
 }
 
 pub export fn isr9() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $9
-        \\ jmp isr_common
-    );
+    isr(9);
 }
 
 pub export fn isr10() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $10
-        \\ jmp isr_common
-    );
+    isr(10);
 }
 
 pub export fn isr11() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $11
-        \\ jmp isr_common
-    );
+    isr(11);
 }
 
 pub export fn isr12() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $12
-        \\ jmp isr_common
-    );
+    isr(12);
 }
 
 pub export fn isr13() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $13
-        \\ jmp isr_common
-    );
+    isr(13);
 }
 
 pub export fn isr14() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $14
-        \\ jmp isr_common
-    );
+    isr(14);
 }
 
 pub export fn isr15() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $15
-        \\ jmp isr_common
-    );
+    isr(15);
 }
 
 pub export fn isr16() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $16
-        \\ jmp isr_common
-    );
+    isr(16);
 }
 
 pub export fn isr17() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $17
-        \\ jmp isr_common
-    );
+    isr(17);
 }
 
 pub export fn isr18() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $18
-        \\ jmp isr_common
-    );
+    isr(18);
 }
 
 pub export fn isr19() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $19
-        \\ jmp isr_common
-    );
+    isr(19);
 }
 
 pub export fn isr20() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $20
-        \\ jmp isr_common
-    );
+    isr(20);
 }
 
 pub export fn isr21() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $21
-        \\ jmp isr_common
-    );
+    isr(21);
 }
 
 pub export fn isr22() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $22
-        \\ jmp isr_common
-    );
+    isr(22);
 }
 
 pub export fn isr23() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $23
-        \\ jmp isr_common
-    );
+    isr(23);
 }
 
 pub export fn isr24() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $24
-        \\ jmp isr_common
-    );
+    isr(24);
 }
 
 pub export fn isr25() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $25
-        \\ jmp isr_common
-    );
+    isr(25);
 }
 
 pub export fn isr26() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $26
-        \\ jmp isr_common
-    );
+    isr(26);
 }
 
 pub export fn isr27() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $27
-        \\ jmp isr_common
-    );
+    isr(27);
 }
 
 pub export fn isr28() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $28
-        \\ jmp isr_common
-    );
+    isr(28);
 }
 
 pub export fn isr29() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $29
-        \\ jmp isr_common
-    );
+    isr(29);
 }
 pub export fn isr30() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $30
-        \\ jmp isr_common
-    );
+    isr(30);
 }
 
 pub export fn isr31() void {
-    asm volatile (
-        \\ cli
-        \\ push $0
-        \\ push $31
-        \\ jmp isr_common
-    );
+    isr(31);
 }

@@ -38,146 +38,79 @@ export fn irq_common() callconv(.Naked) void {
         \\ iret 
     );
 }
-pub export fn irq0() void {
+
+pub fn irq(comptime num: usize) void {
     asm volatile (
         \\ cli
-        \\ push $32
-        \\ push $0
+        \\ push %[n1] 
+        \\ push %[n2]
         \\ jmp irq_common
+        :
+        : [n1] "i" (num + 32),
+          [n2] "i" (num),
     );
+}
+
+pub export fn irq0() void {
+    irq(0);
 }
 
 pub export fn irq1() void {
-    asm volatile (
-        \\ cli
-        \\ push $33
-        \\ push $1
-        \\ jmp irq_common
-    );
+    irq(1);
 }
 
 pub export fn irq2() void {
-    asm volatile (
-        \\ cli
-        \\ push $34
-        \\ push $2
-        \\ jmp irq_common
-    );
+    irq(2);
 }
 
 pub export fn irq3() void {
-    asm volatile (
-        \\ cli
-        \\ push $35
-        \\ push $3
-        \\ jmp irq_common
-    );
+    irq(3);
 }
 
 pub export fn irq4() void {
-    asm volatile (
-        \\ cli
-        \\ push $36
-        \\ push $4
-        \\ jmp irq_common
-    );
+    irq(4);
 }
 
 pub export fn irq5() void {
-    asm volatile (
-        \\ cli
-        \\ push $37
-        \\ push $5
-        \\ jmp irq_common
-    );
+    irq(5);
 }
 
 pub export fn irq6() void {
-    asm volatile (
-        \\ cli
-        \\ push $38
-        \\ push $6
-        \\ jmp irq_common
-    );
+    irq(6);
 }
 
 pub export fn irq7() void {
-    asm volatile (
-        \\ cli
-        \\ push $39
-        \\ push $7
-        \\ jmp irq_common
-    );
+    irq(7);
 }
 
 pub export fn irq8() void {
-    asm volatile (
-        \\ cli
-        \\ push $40
-        \\ push $8
-        \\ jmp irq_common
-    );
+    irq(8);
 }
 
 pub export fn irq9() void {
-    asm volatile (
-        \\ cli
-        \\ push $41
-        \\ push $9
-        \\ jmp irq_common
-    );
+    irq(9);
 }
 
 pub export fn irq10() void {
-    asm volatile (
-        \\ cli
-        \\ push $42
-        \\ push $10
-        \\ jmp irq_common
-    );
+    irq(10);
 }
 
 pub export fn irq11() void {
-    asm volatile (
-        \\ cli
-        \\ push $43
-        \\ push $11
-        \\ jmp irq_common
-    );
+    irq(11);
 }
 
 pub export fn irq12() void {
-    asm volatile (
-        \\ cli
-        \\ push $44
-        \\ push $12
-        \\ jmp irq_common
-    );
+    irq(12);
 }
 
 pub export fn irq13() void {
-    asm volatile (
-        \\ cli
-        \\ push $45
-        \\ push $13
-        \\ jmp irq_common
-    );
+    irq(13);
 }
 
 pub export fn irq14() void {
-    asm volatile (
-        \\ cli
-        \\ push $46
-        \\ push $14
-        \\ jmp irq_common
-    );
+    irq(14);
 }
 
 pub export fn irq15() void {
-    asm volatile (
-        \\ cli
-        \\ push $47
-        \\ push $15
-        \\ jmp irq_common
-    );
+    irq(15);
 }

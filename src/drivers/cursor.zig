@@ -1,4 +1,4 @@
-const io = @import("arch");
+const io = @import("arch").io;
 
 /// address register
 const address: u16 = 0x3D4;

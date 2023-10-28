@@ -5,18 +5,16 @@ const PICS_DATA = PICS_COMMAND + 1;
 
 const EOI: u8 = 0x20; // end of interrupt
 
-const arch = @import("arch");
-const out = arch.out;
-const in = arch.in;
+const io = @import("arch").io;
 const write = @import("../drivers/vga.zig").write;
 
 // if interrupt was issued by master pci, eoi needs to be only sent to master
 // if it was from the slave pci, both neet be sent eoi
 pub fn sendEoi(irq: usize) void {
     if (irq >= 8) {
-        out(PICS_COMMAND, EOI);
+        io.out(PICS_COMMAND, EOI);
     }
-    out(PICM_COMMAND, EOI);
+    io.out(PICM_COMMAND, EOI);
 }
 
 // ICW1 -> PIC Command Register
@@ -54,19 +52,19 @@ pub fn remapPic(master_offset: u8, slave_offset: u8) void {
     // start init sequence in cascade mode
     // makes pics wait for 3 initialization words on its data ports
 
-    out(PICM_COMMAND, @as(u8, 0x11));
-    out(PICS_COMMAND, @as(u8, 0x11));
+    io.out(PICM_COMMAND, @as(u8, 0x11));
+    io.out(PICS_COMMAND, @as(u8, 0x11));
     // set master and slave offsets
-    out(PICM_DATA, master_offset);
-    out(PICS_DATA, slave_offset);
+    io.out(PICM_DATA, master_offset);
+    io.out(PICS_DATA, slave_offset);
     // notify slave and master of each other
-    out(PICM_DATA, @as(u8, 0x04)); // 0x0100. second bit is set which corresponds to irq 2
-    out(PICS_DATA, @as(u8, 0x02)); // corresponds to irq 2 on slave PIC
+    io.out(PICM_DATA, @as(u8, 0x04)); // 0x0100. second bit is set which corresponds to irq 2
+    io.out(PICS_DATA, @as(u8, 0x02)); // corresponds to irq 2 on slave PIC
 
-    out(PICM_DATA, @as(u8, 0x01));
-    out(PICS_DATA, @as(u8, 0x01));
+    io.out(PICM_DATA, @as(u8, 0x01));
+    io.out(PICS_DATA, @as(u8, 0x01));
 
     // enable IRQs
-    out(PICS_DATA, @as(u8, 0x0));
-    out(PICS_DATA, @as(u8, 0x0));
+    io.out(PICS_DATA, @as(u8, 0x0));
+    io.out(PICS_DATA, @as(u8, 0x0));
 }

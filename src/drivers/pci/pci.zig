@@ -1,5 +1,5 @@
 const std = @import("std");
-const arch = @import("arch");
+const io = @import("arch").io;
 const writeln = @import("root").serial.writeln;
 const deviceInfo = @import("devices.zig");
 const ide = @import("ide.zig");
@@ -35,8 +35,8 @@ const PciAddress = packed struct(u32) {
 
     const Self = @This();
     fn configRead(self: *Self, comptime size: type) size {
-        arch.out(CONFIG_ADDRESS, self.asBits());
-        return arch.in(CONFIG_DATA, size);
+        io.out(CONFIG_ADDRESS, self.asBits());
+        return io.in(CONFIG_DATA, size);
     }
 };
 
