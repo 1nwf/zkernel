@@ -86,7 +86,7 @@ pub fn build(b: *std.Build) !void {
 
     const nodisplay = b.option(bool, "no-display", "disable qemu display") orelse false;
     const run_qemu = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "--serial", "stdio" });
-    const run_qemu_monitor = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "-d", "int,guest_errors", "-no-reboot", "-no-shutdown", "-monitor", "stdio" });
+    const run_qemu_monitor = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "-d", "guest_errors", "-no-reboot", "-no-shutdown", "-monitor", "stdio" });
 
     const monitor = b.step("monitor", "runs os with qemu monitor");
     monitor.dependOn(run_qemu_monitor.step);
@@ -190,7 +190,7 @@ const RunQemuStep = struct {
 
     const Self = @This();
     fn init(b: *std.Build, kernel_path: []const u8, nodisplay: bool, options: ?[]const []const u8) Self {
-        var sys_cmd = b.addSystemCommand(&.{ "qemu-system-i386", "-kernel", kernel_path, "-m", "128M", "-nic", "user,model=virtio" });
+        var sys_cmd = b.addSystemCommand(&.{ "qemu-system-i386", "-kernel", kernel_path, "-m", "128M", "-nic", "user,model=rtl8139" });
         sys_cmd.step.dependOn(b.default_step);
         if (nodisplay) {
             sys_cmd.addArgs(&.{ "--display", "none" });

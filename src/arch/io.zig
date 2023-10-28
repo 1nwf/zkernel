@@ -38,3 +38,22 @@ pub fn in(port: u16, comptime T: type) T {
         else => @compileError("invalid type"),
     };
 }
+
+pub fn Port(comptime T: type) type {
+    return struct {
+        addr: u16,
+        const Self = @This();
+        pub fn init(addr: u16) Self {
+            return .{
+                .addr = addr,
+            };
+        }
+        pub fn read(self: *const Self) T {
+            return in(self.addr, T);
+        }
+
+        pub fn write(self: *const Self, data: T) void {
+            out(self.addr, data);
+        }
+    };
+}
