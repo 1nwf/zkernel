@@ -48,7 +48,7 @@ export fn default_handler(ctx: Context) void {
 }
 pub var interrupt_handlers = [_]Handler{default_handler} ** 256;
 const Handler = *const fn (Context) callconv(.C) void;
-pub fn setIrqHandler(comptime idx: usize, comptime h: Handler) void {
+pub fn setIrqHandler(idx: usize, comptime h: Handler) void {
     interrupt_handlers[idx + 32] = h;
 }
 
