@@ -5,12 +5,16 @@ const Port = @import("arch").io.Port;
 const interrupt = @import("../../interrupts/interrupts.zig");
 
 const RX_BUFFER_SIZE = 8192 + 16;
-const TX_BUFFER_SIZE = 8192 + 16;
+const TX_BUFFER_SIZE = 1792;
+
+const ROK: u16 = 0b1; // Receive Ok
+const TOK: u32 = 0b100; // Transmit Ok
 
 var rx_buffer: [RX_BUFFER_SIZE]u8 = .{0} ** RX_BUFFER_SIZE;
 var tx_buffer: [4][TX_BUFFER_SIZE]u8 = .{.{0} ** TX_BUFFER_SIZE} ** 4;
 
 const Self = @This();
+var device: Self = undefined;
 registers: struct {
     mac: [6]Port(u8),
     tx_cmds: [tx_buffer.len]Port(u32),
@@ -27,9 +31,11 @@ registers: struct {
 },
 
 active_tx_idx: u8 = 0,
+mac_address: u48,
 
-pub fn init(device: *pci.Device) !Self {
-    const iobase = switch (device.read_bar(0)) {
+pub fn init(pci_dev: *const pci.Device) !Self {
+    pci_dev.enableBusMastering();
+    const iobase = switch (pci_dev.read_bar(0)) {
         .Io => |val| val,
         else => return error.InvalidBarValue,
     };
@@ -65,6 +71,7 @@ pub fn init(device: *pci.Device) !Self {
             .tx_config = Port(u32).init(iobase + 0x40),
             .rx_config = Port(u32).init(iobase + 0x44),
         },
+        .mac_address = 0,
     };
 
     log.info("iobase: 0x{x}", .{iobase});
@@ -81,29 +88,71 @@ pub fn init(device: *pci.Device) !Self {
     // Enable transmitter and receiver to allow packets in/out
     dev.registers.cmd.write(0xC); // Sets Transmitter Enabled and Receiver Enabled bits to high
 
-    const interrupt_line = device.location.readConfig(.InterruptLine);
-    _ = interrupt_line;
-    // interrupt.setIrqHandler(interrupt_line, interrupt_handler);
+    const interrupt_line = pci_dev.location.readConfig(.InterruptLine);
+    interrupt.setIrqHandler(interrupt_line, interrupt_handler);
 
+    device = dev;
+
+    dev.mac_address = dev.read_mac_addr();
+    dev.print_mac_addr();
     return dev;
 }
 
-pub fn transmit(self: *Self) void {
-    _ = self;
+pub fn transmit_packet(self: *Self, buffer_addr: u32, len: u32) !void {
+    if (len > 1792) {
+        return error.PacketTooLarge;
+    }
+    while (self.registers.tx_cmds[self.active_tx_idx].read() & 0x2000 != 0x2000) {} // wait until previous DMA operation is done, if in process.
+
+    self.registers.tx_addrs[self.active_tx_idx].write(buffer_addr);
+    const cmd = 0x1FFF & len; // sets own bit to start DMA operation
+    self.registers.tx_cmds[self.active_tx_idx].write(cmd);
+
+    self.active_tx_idx = @intCast((self.active_tx_idx + 1) % tx_buffer.len);
 }
 
-pub fn receive(self: *Self) void {
-    _ = self;
+pub fn receive_packet(self: *const Self) ?[]u8 {
+    const is_empty = self.registers.cmd.read() & 1 == 1;
+    if (is_empty) return null;
+    const offset = (@as(u32, @intCast(self.registers.capr.read())) + 16) & 0xFFFF;
+    const packet = rx_buffer[offset..];
+
+    const header = @as(*u16, @alignCast(@ptrCast(packet[0..2]))).*;
+    const length = @as(*u16, @alignCast(@ptrCast(packet[2..4]))).* - 4;
+    if (header & ROK != ROK) {
+        @panic("packet not ok");
+    }
+    const data = packet[4..length];
+    return data;
 }
 
-fn inc_transmit_idx(self: *Self) void {
-    if (self.active_tx_idx == 3) {
-        self.active_tx_idx = 0;
-    } else {
-        self.active_tx_idx += 1;
+fn print_mac_addr(self: *Self) void {
+    const write = @import("arch").serial.write;
+    write("[rtl8139] mac address: ", .{});
+    for (0..6) |idx| {
+        const val: u8 = @truncate(self.mac_address >> @intCast((5 - idx) * 8));
+        if (idx == 5) write("{x}\n", .{val}) else write("{x}::", .{val});
     }
 }
 
+fn read_mac_addr(self: *const Self) u48 {
+    var mac: u48 = 0;
+    for (self.registers.mac, 0..) |m, idx| {
+        const offset = 40 - (idx * 8);
+        const val = @as(u48, m.read()) << @intCast(offset);
+        mac |= val;
+    }
+    return mac;
+}
+
 export fn interrupt_handler(ctx: interrupt.Context) void {
+    const status = device.registers.isr.read();
+    device.registers.isr.write(0x5);
+    if (status & TOK == TOK) {
+        log.info("(int) transmit ok", .{});
+    }
+    if (status & ROK == ROK) {
+        log.info("(int) received packet", .{});
+    }
     _ = ctx;
 }
