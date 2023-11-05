@@ -15,6 +15,7 @@ var tx_buffer: [4][TX_BUFFER_SIZE]u8 = .{.{0} ** TX_BUFFER_SIZE} ** 4;
 
 const Self = @This();
 var device: Self = undefined;
+
 registers: struct {
     mac: [6]Port(u8),
     tx_cmds: [tx_buffer.len]Port(u32),
@@ -33,13 +34,13 @@ registers: struct {
 active_tx_idx: u8 = 0,
 mac_address: u48,
 
-pub fn init(pci_dev: *const pci.Device) !Self {
+pub fn init(pci_dev: *const pci.Device) !*Self {
     pci_dev.enableBusMastering();
     const iobase = switch (pci_dev.read_bar(0)) {
         .Io => |val| val,
         else => return error.InvalidBarValue,
     };
-    var dev = Self{
+    device = Self{
         .registers = .{
             .mac = [6]Port(u8){
                 Port(u8).init(iobase + 0x0),
@@ -75,27 +76,25 @@ pub fn init(pci_dev: *const pci.Device) !Self {
     };
 
     log.info("iobase: 0x{x}", .{iobase});
-    dev.registers.config1.write(0); // power on device
-    dev.registers.cmd.write(0x10); // reset
-    while (dev.registers.cmd.read() & 0x10 != 0) {} // wait until reset finishes
+    device.registers.config1.write(0); // power on device
+    device.registers.cmd.write(0x10); // reset
+    while (device.registers.cmd.read() & 0x10 != 0) {} // wait until reset finishes
     log.info("device reset", .{});
 
-    dev.registers.rx_addr.write(@intFromPtr(&rx_buffer)); // send rx buffer address
-    dev.registers.imr.write(0x5); // activate transmit ok and receive ok interrupts
+    device.registers.rx_addr.write(@intFromPtr(&rx_buffer)); // send rx buffer address
+    device.registers.imr.write(0x5); // activate transmit ok and receive ok interrupts
 
-    dev.registers.rx_config.write(0xf); // configure receive buffer. Accepts all packets. AB+AM+APM+AAP
+    device.registers.rx_config.write(0xf); // configure receive buffer. Accepts all packets. AB+AM+APM+AAP
 
     // Enable transmitter and receiver to allow packets in/out
-    dev.registers.cmd.write(0xC); // Sets Transmitter Enabled and Receiver Enabled bits to high
+    device.registers.cmd.write(0xC); // Sets Transmitter Enabled and Receiver Enabled bits to high
 
     const interrupt_line = pci_dev.location.readConfig(.InterruptLine);
     interrupt.setIrqHandler(interrupt_line, interrupt_handler);
 
-    device = dev;
-
-    dev.mac_address = dev.read_mac_addr();
-    dev.print_mac_addr();
-    return dev;
+    device.mac_address = device.read_mac_addr();
+    device.print_mac_addr();
+    return &device;
 }
 
 pub fn transmit_packet(self: *Self, buffer_addr: u32, len: u32) !void {
@@ -111,18 +110,20 @@ pub fn transmit_packet(self: *Self, buffer_addr: u32, len: u32) !void {
     self.active_tx_idx = @intCast((self.active_tx_idx + 1) % tx_buffer.len);
 }
 
-pub fn receive_packet(self: *const Self) ?[]u8 {
+pub fn receive_packet(self: *Self) ?[]u8 {
     const is_empty = self.registers.cmd.read() & 1 == 1;
     if (is_empty) return null;
     const offset = (@as(u32, @intCast(self.registers.capr.read())) + 16) & 0xFFFF;
     const packet = rx_buffer[offset..];
 
     const header = @as(*u16, @alignCast(@ptrCast(packet[0..2]))).*;
-    const length = @as(*u16, @alignCast(@ptrCast(packet[2..4]))).* - 4;
+    const length = @as(*u16, @alignCast(@ptrCast(packet[2..4]))).*;
     if (header & ROK != ROK) {
         @panic("packet not ok");
     }
     const data = packet[4..length];
+    const capr: u16 = ((@as(u16, @intCast(offset)) + length + 7) & ~@as(u16, 3)) - 16;
+    self.registers.capr.write(capr);
     return data;
 }
 
