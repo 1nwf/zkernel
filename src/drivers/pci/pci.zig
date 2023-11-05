@@ -4,7 +4,6 @@ const writeln = @import("root").serial.writeln;
 const deviceInfo = @import("devices.zig");
 const ide = @import("ide.zig");
 const log = std.log.scoped(.pci);
-const rtl8139 = @import("../net/rtl8139.zig");
 
 const CONFIG_ADDRESS = 0xCF8;
 const CONFIG_DATA = 0xCFC;
@@ -84,17 +83,24 @@ pub const PciRegisters = enum(u8) {
     }
 };
 
-pub fn init(allocator: std.mem.Allocator) !void {
+devices: []Device,
+pub fn init(allocator: std.mem.Allocator) !@This() {
     const devices = try getAllDevices(allocator);
-    for (devices) |*d| {
-        const vendor = d.location.readConfig(.VenderId);
-        const deviceid = d.location.readConfig(.DeviceId);
-        if (vendor == 0x10ec and deviceid == 0x8139) {
-            _ = try rtl8139.init(d);
+    return .{
+        .devices = devices,
+    };
+}
+
+pub fn find(self: *const @This(), vendor: u16, device_id: u16) ?*Device {
+    for (self.devices) |*dev| {
+        const v = dev.readConfig(.VenderId);
+        const dev_id = dev.readConfig(.DeviceId);
+        if (v == vendor and dev_id == device_id) {
+            return dev;
         }
-        // const subsystem = d.location.readConfig(.SubsystemId);
-        // log.info("{s} - {x} -- {x} -- {}", .{ d.getTypeName(), vendor, deviceid, subsystem });
     }
+
+    return null;
 }
 
 pub const Device = struct {
@@ -105,6 +111,14 @@ pub const Device = struct {
     const Self = @This();
     fn getTypeName(self: *const Self) []const u8 {
         return deviceInfo.getDeviceType(self.class, self.subclass);
+    }
+
+    pub fn readConfig(self: Self, comptime reg: PciRegisters) reg.getWidth() {
+        var addr: PciAddress = .{
+            .register_offset = reg,
+            .location = self.location,
+        };
+        return addr.configRead(reg.getWidth());
     }
 
     pub const Bar = union(enum) { Empty, Io: u16, Mem: u32 };
@@ -133,6 +147,17 @@ pub const Device = struct {
 
         const mem_addr = value & ~@as(u32, 0x8);
         return Bar{ .Mem = mem_addr };
+    }
+
+    fn writeConfig(self: *const Self, comptime reg: PciRegisters, data: anytype) void {
+        const addr = PciAddress{ .register_offset = reg, .location = self.location };
+        io.out(CONFIG_ADDRESS, addr.asBits());
+        io.out(CONFIG_DATA, data);
+    }
+    // allow device to do DMA
+    pub fn enableBusMastering(self: *const Self) void {
+        const config = self.readConfig(.Command);
+        self.writeConfig(.Command, config | (1 << 2));
     }
 };
 
