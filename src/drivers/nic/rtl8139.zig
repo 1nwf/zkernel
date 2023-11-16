@@ -3,6 +3,7 @@ const std = @import("std");
 const log = std.log.scoped(.rtl8139);
 const Port = @import("arch").io.Port;
 const interrupt = @import("../../interrupts/interrupts.zig");
+const Nic = @import("../../net/Nic.zig");
 
 const RX_BUFFER_SIZE = 8192 + 16;
 const TX_BUFFER_SIZE = 1792;
@@ -32,7 +33,7 @@ registers: struct {
 },
 
 active_tx_idx: u8 = 0,
-mac_address: u48,
+mac_address: [6]u8,
 
 pub fn init(pci_dev: *const pci.Device) !*Self {
     pci_dev.enableBusMastering();
@@ -72,7 +73,7 @@ pub fn init(pci_dev: *const pci.Device) !*Self {
             .tx_config = Port(u32).init(iobase + 0x40),
             .rx_config = Port(u32).init(iobase + 0x44),
         },
-        .mac_address = 0,
+        .mac_address = undefined,
     };
 
     log.info("iobase: 0x{x}", .{iobase});
@@ -127,21 +128,53 @@ pub fn receive_packet(self: *Self) ?[]u8 {
     return data;
 }
 
+fn receive(ctx: *anyopaque) ?[]u8 {
+    var self: *Self = @ptrCast(@alignCast(ctx));
+    return self.receive_packet();
+}
+
+fn transmit(ctx: *anyopaque, addr: u32, len: u32) anyerror!void {
+    var self: *Self = @ptrCast(@alignCast(ctx));
+    return self.transmit_packet(addr, len);
+}
+
+pub fn nic(self: *Self) Nic {
+    return .{
+        .ptr = self,
+        .vtable = &.{
+            .receive_packet = receive,
+            .transmit_packet = transmit,
+        },
+        .mac_address = self.mac_address,
+    };
+}
+
 fn print_mac_addr(self: *Self) void {
     const write = @import("arch").serial.write;
     write("[rtl8139] mac address: ", .{});
+    // for (0..6) |idx| {
+    //     const val: u8 = @truncate(self.mac_address >> @intCast((5 - idx) * 8));
+    //     if (idx == 5) write("{x}\n", .{val}) else write("{x}::", .{val});
+    // }
+
     for (0..6) |idx| {
-        const val: u8 = @truncate(self.mac_address >> @intCast((5 - idx) * 8));
+        const val = self.mac_address[idx];
         if (idx == 5) write("{x}\n", .{val}) else write("{x}::", .{val});
     }
 }
 
-fn read_mac_addr(self: *const Self) u48 {
-    var mac: u48 = 0;
+fn read_mac_addr(self: *const Self) [6]u8 {
+    // var mac: u48 = 0;
+    // for (self.registers.mac, 0..) |m, idx| {
+    //     const offset = 40 - (idx * 8);
+    //     const val = @as(u48, m.read()) << @intCast(offset);
+    //     mac |= val;
+    // }
+    // return mac;
+
+    var mac: [6]u8 = undefined;
     for (self.registers.mac, 0..) |m, idx| {
-        const offset = 40 - (idx * 8);
-        const val = @as(u48, m.read()) << @intCast(offset);
-        mac |= val;
+        mac[idx] = m.read();
     }
     return mac;
 }

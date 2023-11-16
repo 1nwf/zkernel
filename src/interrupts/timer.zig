@@ -19,7 +19,7 @@ var interval: u32 = 0;
 
 pub export fn timer_handler(ctx: int.Context) void {
     _ = ctx;
-    // ticks += 1;
+    ticks += 1;
 }
 
 pub fn read_count() u16 {
@@ -35,10 +35,10 @@ pub fn read_count() u16 {
     return count;
 }
 
-pub export fn wait(secs: u32) void {
-    var target = ticks + (secs * interval);
+pub export fn wait(ms: u32) void {
+    var target = ticks + ms;
     while (ticks < target) {
-        asm volatile ("nop");
+        asm volatile ("hlt");
     }
 
     return;

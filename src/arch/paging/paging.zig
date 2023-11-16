@@ -5,6 +5,8 @@ extern const kernel_end: usize;
 
 const std = @import("std");
 
+pub var active_page_dir: *PageDirectory = undefined;
+
 pub fn enable_paging() void {
     asm volatile (
         \\ mov %%cr0, %%eax
@@ -73,7 +75,7 @@ const PageTable = struct {
         self.entries[idx] = entry;
     }
 
-    inline fn findEntry(self: *@This(), addr: usize) *PageTableEntry {
+    pub inline fn findEntry(self: *@This(), addr: usize) *PageTableEntry {
         return &self.entries[tableIndex(addr)];
     }
 };
@@ -170,6 +172,7 @@ pub const PageDirectory = struct {
     }
 
     pub fn load(self: *Self) void {
+        active_page_dir = self;
         asm volatile (
             \\ mov %[addr], %%cr3
             :

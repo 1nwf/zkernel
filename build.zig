@@ -190,7 +190,20 @@ const RunQemuStep = struct {
 
     const Self = @This();
     fn init(b: *std.Build, kernel_path: []const u8, nodisplay: bool, options: ?[]const []const u8) Self {
-        var sys_cmd = b.addSystemCommand(&.{ "qemu-system-i386", "-kernel", kernel_path, "-m", "128M", "-nic", "user,model=rtl8139" });
+        // const old_net_opts: [][]const u8 = &.{ "-nic", "user,model=rtl8139,hostfwd=tcp::5555-:23" };
+        var sys_cmd = b.addSystemCommand(&.{
+            "qemu-system-i386",
+            "-kernel",
+            kernel_path,
+            "-m",
+            "128M",
+            "-netdev",
+            "user,id=u1,hostfwd=tcp::5555-:23",
+            "-device",
+            "rtl8139,netdev=u1",
+            "-object",
+            "filter-dump,id=f1,netdev=u1,file=dump.pcat",
+        });
         sys_cmd.step.dependOn(b.default_step);
         if (nodisplay) {
             sys_cmd.addArgs(&.{ "--display", "none" });

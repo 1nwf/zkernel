@@ -15,6 +15,9 @@ const pci = @import("drivers/pci/pci.zig");
 const debug = @import("debug/debug.zig");
 
 const mem = @import("mem/mem.zig");
+const virt_mem = arch.virt_mem;
+const rtl8139 = @import("drivers/nic/rtl8139.zig");
+const net = @import("net/net.zig");
 
 export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
     main(bootInfo) catch |e| {
@@ -25,7 +28,7 @@ export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
 
 pub const std_options = struct {
     pub fn logFn(comptime _: std.log.Level, comptime scope: @Type(.EnumLiteral), comptime format: []const u8, args: anytype) void {
-        if (scope != .default) serial.write("{s}: ", .{@tagName(scope)});
+        if (scope != .default) serial.write("[{s}] ", .{@tagName(scope)});
         serial.writeln(format, args);
     }
 };
@@ -74,5 +77,35 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
-    try pci.init(allocator);
+    const pci_devices = try pci.init(allocator);
+    const nic_pci_dev = pci_devices.find(0x10ec, 0x8139) orelse @panic("nic not found");
+    var nic = (try rtl8139.init(nic_pci_dev)).nic();
+    try send_test_arp_packet(&nic);
+    try send_test_udp_packet(&nic);
+}
+
+fn print_res(data: anytype) void {
+    inline for (std.meta.fields(@TypeOf(data))) |f| {
+        switch (@typeInfo(f.type)) {
+            .Int => log.info("{s}: {x}", .{ f.name, @field(data, f.name) }),
+            .Enum => log.info("{s}: {}", .{ f.name, @field(data, f.name) }),
+            .Struct => print_res(@field(data, f.name)),
+            else => {},
+        }
+    }
+}
+
+fn send_test_arp_packet(nic: *net.Nic) !void {
+    const packet = net.arp.Packet(.Ethernet, .IPv4).initRequest(nic.mac_address, .{ 10, 0, 0, 47 }, .{ 10, 0, 2, 2 });
+    const res = try nic.send_arp(packet, .{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
+    if (res) |data| {
+        const value = net.bigEndianToStruct(net.ethernet_frame.Frame(@TypeOf(packet)), data);
+        _ = value;
+    }
+}
+
+fn send_test_udp_packet(nic: *net.Nic) !void {
+    const dhcp_header = net.dhcp.discoverPacket(nic.mac_address);
+    const packet = net.udp.Datagram(@TypeOf(dhcp_header)).init(68, 67, dhcp_header);
+    try nic.udp_packet(@TypeOf(dhcp_header), packet, .{ 0, 0, 0, 0 }, .{ 0xff, 0xff, 0xff, 0xff });
 }
