@@ -85,7 +85,7 @@ pub fn init(pci_dev: *const pci.Device) !*Self {
     device.registers.rx_addr.write(@intFromPtr(&rx_buffer)); // send rx buffer address
     device.registers.imr.write(0x5); // activate transmit ok and receive ok interrupts
 
-    device.registers.rx_config.write(0xf); // configure receive buffer. Accepts all packets. AB+AM+APM+AAP
+    device.registers.rx_config.write(0xe); // configure receive buffer. Accepts all packets. AB+AM+APM+AAP
 
     // Enable transmitter and receiver to allow packets in/out
     device.registers.cmd.write(0xC); // Sets Transmitter Enabled and Receiver Enabled bits to high

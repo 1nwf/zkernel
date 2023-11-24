@@ -63,21 +63,35 @@ const ClientId = extern struct {
     addr: [6]u8 align(1),
 };
 
+const HostName = extern struct {
+    option: u8 = 12,
+    length: u8 = 5,
+    name: [5]u8 align(1) = [_]u8{ 'a', 'l', 'a', 'r', 'm' },
+};
+
+const MaxSize = extern struct {
+    option: u8 = 57,
+    length: u8 = 2,
+    name: u16 align(1) = @byteSwap(@as(u16, 1472)),
+};
+
 fn ParameterRequestList(comptime params: u8) type {
     return extern struct {
         option: u8 = 55,
         length: u8 = params,
-        options: [params]u8,
+        options: [params]u8 align(1),
     };
 }
 
-pub fn discoverPacket(mac_addr: [6]u8) Packet(18) {
+const size = 46;
+
+pub fn discoverPacket(mac_addr: [6]u8) Packet(size) {
     const header = Header{
         .op = .Request,
         .hops = 0,
-        .xid = 1,
-        .secs = 0,
-        .flags = 0,
+        .xid = 0x3364fcaf,
+        .secs = 1,
+        .flags = 0x0000,
         .ciaddr = std.mem.zeroes([4]u8),
         .yiaddr = std.mem.zeroes([4]u8),
         .siaddr = std.mem.zeroes([4]u8),
@@ -85,22 +99,34 @@ pub fn discoverPacket(mac_addr: [6]u8) Packet(18) {
         .chaddr = mac_addr,
     };
 
-    const client_id = ClientId{
-        .length = 7,
-        .hw_type = 1,
-        .addr = mac_addr,
+    // const client_id = ClientId{
+    //     .length = 7,
+    //     .hw_type = 1,
+    //     .addr = mac_addr,
+    // };
+
+    const host_name = HostName{};
+
+    const params = ParameterRequestList(9){
+        .options = [_]u8{ 1, 3, 6, 12, 15, 33, 42, 120, 121 },
     };
 
-    const params = ParameterRequestList(4){
-        .options = [_]u8{ 1, 3, 6, 42 },
+    const bytes2 = [_]u8{
+        0x3d, 0x13, 0xff,
+        0xf1, 0xf5, 0xdd,
+        0x7f, 0x00, 0x02,
+        0x00, 0x00, 0xab,
+        0x11, 0x4d, 0x61,
+        0xbe, 0x2d, 0x76,
+        0x0c, 0x84, 0x66,
     };
 
-    return Packet(18){
+    return Packet(size){
         .header = header,
         .options = std.mem.toBytes(Options{
             .option_type = .MessageType,
             .length = 1,
             .data = 1,
-        }) ++ std.mem.toBytes(client_id) ++ std.mem.toBytes(params),
+        }) ++ bytes2 ++ std.mem.toBytes(params) ++ std.mem.toBytes(MaxSize{}) ++ std.mem.toBytes(host_name),
     };
 }

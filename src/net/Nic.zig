@@ -14,9 +14,11 @@ pub const VTable = struct {
     receive_packet: *const fn (ctx: *anyopaque) ?[]u8,
 };
 
-pub fn transmit_packet(self: *Self, value: anytype) anyerror!void {
-    const bytes = utils.swapFields(value);
-    return self.vtable.transmit_packet(self.ptr, @intFromPtr(&bytes), bytes.len);
+pub fn transmit_packet(self: *Self, value: []const u8) anyerror!void {
+    // const bytes = utils.swapFields(value);
+    // log.info("{any}", .{std.fmt.fmtSliceHexLower(&bytes)});
+    const bytes = value;
+    return self.vtable.transmit_packet(self.ptr, @intFromPtr(bytes.ptr), bytes.len);
 }
 
 pub fn receive_packet(self: *Self) ?[]u8 {
@@ -30,22 +32,23 @@ pub fn send_arp(self: *Self, packet: anytype, dest_mac_addr: [6]u8) !?[]u8 {
     return self.receive_packet();
 }
 
-pub fn udp_packet(self: *Self, comptime T: type, datagram: udp.Datagram(T), src_ip: [4]u8, dest_ip: [4]u8) !void {
+pub fn make_udp_packet(self: *Self, comptime T: type, datagram: udp.Datagram(T), src_ip: [4]u8, dest_ip: [4]u8) [329]u8 {
     const total_length: u16 = (@bitSizeOf(ip.Header) / 8) + (@bitSizeOf(@TypeOf(datagram)) / 8);
-    const ip_header = ip.Header{
+    var ip_header = ip.Header{
         .total_length = total_length,
-        .tos = 0,
+        .tos = 0xC0,
         .ident = 0,
         .flags_and_fragment_offset = 0,
-        .ttl = 10,
+        .ttl = 64,
         .next_level_protocol = .Udp,
         .checksum = 0,
         .source_ip = src_ip,
         .dest_ip = dest_ip,
     };
+    ip_header.calcChecksum();
 
     const target_mac = [_]u8{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
     const ip_packet = ip.IpPacket(@TypeOf(datagram)).init(ip_header, datagram);
     const frame = eth_frame.Frame(@TypeOf(ip_packet)).init(target_mac, self.mac_address, .Ipv4, ip_packet);
-    try self.transmit_packet(frame);
+    return utils.swapFields(frame);
 }

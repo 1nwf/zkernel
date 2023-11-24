@@ -25,12 +25,18 @@ pub const Header = extern struct {
     source_ip: [4]u8,
     dest_ip: [4]u8,
     // options: ?[]u8 = null,  // optional
+
+    pub fn calcChecksum(self: *Header) void {
+        self.checksum = 0;
+        const bytes = utils.swapFields(self.*);
+        self.checksum = utils.calculateChecksum(&bytes);
+    }
 };
 
 pub fn IpPacket(comptime T: type) type {
     return extern struct {
-        header: Header,
-        data: T,
+        header: Header align(1),
+        data: T align(1),
 
         const Self = @This();
         pub fn init(header: Header, data: T) Self {

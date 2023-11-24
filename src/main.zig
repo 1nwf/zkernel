@@ -80,8 +80,9 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     const pci_devices = try pci.init(allocator);
     const nic_pci_dev = pci_devices.find(0x10ec, 0x8139) orelse @panic("nic not found");
     var nic = (try rtl8139.init(nic_pci_dev)).nic();
-    try send_test_arp_packet(&nic);
-    try send_test_udp_packet(&nic);
+    // try send_test_arp_packet(&nic);
+    // try send_test_udp_packet(&nic);
+    _ = nic;
 }
 
 fn print_res(data: anytype) void {
@@ -96,16 +97,19 @@ fn print_res(data: anytype) void {
 }
 
 fn send_test_arp_packet(nic: *net.Nic) !void {
-    const packet = net.arp.Packet(.Ethernet, .IPv4).initRequest(nic.mac_address, .{ 10, 0, 0, 47 }, .{ 10, 0, 2, 2 });
+    const host_ip = [_]u8{ 192, 168, 1, 115 }; // vm ip address
+    const target_ip = [_]u8{ 192, 168, 1, 1 };
+    const packet = net.arp.Packet(.Ethernet, .IPv4).initRequest(nic.mac_address, host_ip, target_ip);
     const res = try nic.send_arp(packet, .{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
     if (res) |data| {
         const value = net.bigEndianToStruct(net.ethernet_frame.Frame(@TypeOf(packet)), data);
-        _ = value;
+        log.info("value: {}", .{value});
     }
 }
 
 fn send_test_udp_packet(nic: *net.Nic) !void {
     const dhcp_header = net.dhcp.discoverPacket(nic.mac_address);
     const packet = net.udp.Datagram(@TypeOf(dhcp_header)).init(68, 67, dhcp_header);
-    try nic.udp_packet(@TypeOf(dhcp_header), packet, .{ 0, 0, 0, 0 }, .{ 0xff, 0xff, 0xff, 0xff });
+    const data = nic.make_udp_packet(@TypeOf(dhcp_header), packet, .{ 0, 0, 0, 0 }, .{ 0xff, 0xff, 0xff, 0xff });
+    try nic.transmit_packet(&data);
 }

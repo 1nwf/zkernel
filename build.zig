@@ -190,17 +190,18 @@ const RunQemuStep = struct {
 
     const Self = @This();
     fn init(b: *std.Build, kernel_path: []const u8, nodisplay: bool, options: ?[]const []const u8) Self {
-        // const old_net_opts: [][]const u8 = &.{ "-nic", "user,model=rtl8139,hostfwd=tcp::5555-:23" };
         var sys_cmd = b.addSystemCommand(&.{
+            // "sudo",
             "qemu-system-i386",
             "-kernel",
             kernel_path,
             "-m",
             "128M",
             "-netdev",
-            "user,id=u1,hostfwd=tcp::5555-:23",
+            "user,id=u1,",
+            // "vmnet-bridged,id=u1,ifname=en0",
             "-device",
-            "rtl8139,netdev=u1",
+            "rtl8139,netdev=u1,mac=c6:60:b6:a2:31:9d",
             "-object",
             "filter-dump,id=f1,netdev=u1,file=dump.pcat",
         });

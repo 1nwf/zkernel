@@ -35,10 +35,10 @@ pub fn Packet(comptime HT: HardwareType, comptime PT: ProtocolType) type {
         hlen: u8 = ha_size, // hardware address length
         plen: u8 = pa_size, // protocol address length
         operation: Operation align(1),
-        sha: [ha_size]u8 align(1), // sender hardware address
-        spa: [pa_size]u8 align(1), // sender protocol address
-        tha: [ha_size]u8 align(1), // target hardware address
-        tpa: [pa_size]u8 align(1), // target protocol address
+        sha: [ha_size]u8, // sender hardware address
+        spa: [pa_size]u8, // sender protocol address
+        tha: [ha_size]u8, // target hardware address
+        tpa: [pa_size]u8, // target protocol address
 
         const Self = @This();
         pub fn initRequest(sha: [ha_size]u8, spa: [pa_size]u8, tpa: [pa_size]u8) Self {

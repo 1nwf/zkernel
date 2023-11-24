@@ -11,7 +11,7 @@ pub fn Frame(comptime T: type) type {
         dest_mac: [6]u8,
         src_mac: [6]u8,
         protocol: Protocol align(1),
-        packet: T,
+        packet: T align(1),
         const Self = @This();
         pub fn init(dest_mac: [6]u8, src_mac: [6]u8, protocol: Protocol, packet: T) Self {
             return .{

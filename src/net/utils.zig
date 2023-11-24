@@ -97,3 +97,41 @@ fn byteSwapStruct(comptime T: type, value: *T) !void {
         }
     }
 }
+
+pub fn calculateChecksum(data: []const u8) u16 {
+    var sum: usize = 0;
+    var idx: usize = 0;
+    while (idx <= data.len - 2) : (idx += 2) {
+        const value = mem.readIntSlice(u16, data[idx .. idx + 2], .Big);
+        sum += value;
+    }
+
+    if (idx != data.len) { // add skipped byte
+        sum += data[data.len - 1];
+    }
+
+    while ((sum >> 16) != 0) {
+        sum = (sum & 0xffff) + (sum >> 16);
+    }
+
+    return ~(@as(u16, @intCast(sum)));
+}
+
+test "ip header checksum" {
+    const ip = @import("protocols/ip.zig");
+    const ip_header = ip.Header{
+        .tos = 0xC0,
+        .total_length = 315,
+        .ident = 0,
+        .flags_and_fragment_offset = 0,
+        .ttl = 64,
+        .next_level_protocol = .Udp,
+        .checksum = 0,
+        .source_ip = .{ 0, 0, 0, 0 },
+        .dest_ip = .{ 0xff, 0xff, 0xff, 0xff },
+    };
+    const bytes = swapFields(ip_header);
+    const checksum = calculateChecksum(&bytes);
+
+    try std.testing.expectEqual(checksum, 0x78f3);
+}
