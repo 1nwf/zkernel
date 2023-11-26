@@ -72,7 +72,37 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
 
     var pmm = try mem.pmm.init(mem_map, allocator);
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
-    _ = vmm;
 
-    try pci.init(allocator);
+    loadElf();
+    run_userspace_fn(&vmm);
+}
+
+pub fn run_userspace_fn(vmm: *mem.vmm) void {
+    const user_stack = 0x50000;
+    var user_page_dir = vmm.page_directory.findDir(user_stack);
+    user_page_dir.us = 1;
+    vmm.page_directory.mapUserPage(user_stack, user_stack);
+    arch.thread.enter_userspace(@intFromPtr(&user_func), user_stack + arch.paging.PAGE_SIZE);
+}
+
+pub noinline fn user_func() void {
+    write_syscall("in userspace indeeeeeed");
+
+    while (true) {}
+}
+
+pub fn write_syscall(str: []const u8) void {
+    asm volatile (
+        \\ xor %%eax, %%eax
+        \\ int $48
+        :
+        : [value] "{ebx}" (&str),
+    );
+}
+
+fn loadElf() void {
+    const process = @import("process/process.zig");
+    var file = @embedFile("userspace_programs/write.elf").*;
+    process.loadFile(&file) catch unreachable;
+    arch.halt();
 }

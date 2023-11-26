@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) !void {
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
     // const target = b.standardTargetOptions(.{});
-    var target: std.zig.CrossTarget = .{
+    const target: std.zig.CrossTarget = .{
         .cpu_arch = .x86,
         .os_tag = Target.Os.Tag.freestanding,
         .abi = Target.Abi.none,
@@ -53,6 +53,8 @@ pub fn build(b: *std.Build) !void {
         exe.addObjectFile(.{ .path = out });
     }
 
+    addUserspacePrograms(exe);
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
@@ -86,10 +88,14 @@ pub fn build(b: *std.Build) !void {
 
     const nodisplay = b.option(bool, "no-display", "disable qemu display") orelse false;
     const run_qemu = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "--serial", "stdio" });
-    const run_qemu_monitor = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "-d", "int,guest_errors", "-no-reboot", "-no-shutdown", "-monitor", "stdio" });
+    const run_qemu_monitor = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "-d", "guest_errors", "-no-reboot", "-no-shutdown", "-monitor", "stdio" });
+    const run_qemu_debug = RunQemuStep.init(b, kernel_bin, nodisplay, &.{ "-s", "-S" });
 
     const monitor = b.step("monitor", "runs os with qemu monitor");
     monitor.dependOn(run_qemu_monitor.step);
+
+    const debug = b.step("debug", "run qemu in debug mode");
+    debug.dependOn(run_qemu_debug.step);
 
     const run = b.step("run", "run kernel in qemu");
     run.dependOn(run_qemu.step);
@@ -204,3 +210,9 @@ const RunQemuStep = struct {
         };
     }
 };
+
+pub fn addUserspacePrograms(exe: *Step.Compile) void {
+    exe.addAnonymousModule("userspace_programs/write.elf", .{ .source_file = .{
+        .path = "./userspace_programs/write/zig-out/bin/write",
+    } });
+}

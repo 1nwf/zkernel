@@ -118,7 +118,7 @@ pub const PageDirectory = struct {
         };
     }
 
-    inline fn findDir(self: *Self, addr: usize) *PageDirEntry {
+    pub inline fn findDir(self: *Self, addr: usize) *PageDirEntry {
         return &self.dirs[dirIndex(addr)];
     }
 
@@ -147,6 +147,24 @@ pub const PageDirectory = struct {
 
         var pt_entry = page_table.findEntry(virt_addr);
         pt_entry.* = PageTableEntry.init(phys_addr);
+
+        dir.setAddr(@intFromPtr(page_table));
+    }
+
+    pub fn mapUserPage(self: *Self, virt_addr: usize, phys_addr: usize) void {
+        var dir = self.findDir(virt_addr).setPresent();
+
+        var page_table: *PageTable = blk: {
+            var table = self.getDirPageTable(virt_addr);
+            if (table) |t| {
+                break :blk t;
+            }
+            break :blk self.createDirPageTable(virt_addr);
+        };
+
+        var pt_entry = page_table.findEntry(virt_addr);
+        pt_entry.* = PageTableEntry.init(phys_addr);
+        pt_entry.*.us = 1;
 
         dir.setAddr(@intFromPtr(page_table));
     }
