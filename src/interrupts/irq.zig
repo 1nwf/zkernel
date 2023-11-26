@@ -15,22 +15,9 @@ export fn irq_common() callconv(.Naked) void {
     asm volatile (
         \\ cli
         \\ pusha
-        \\ mov %%ds, %%ax
-        \\ push %%eax // push data segment
-        \\ mov $0x10 , %%ax // gdt data segment index
-        \\
-        \\ mov %%ax, %%ds
-        \\ mov %%ax, %%es
-        \\ mov %%ax, %%gs
-        \\ mov %%ax, %%fs
         \\
         \\ call irq_handler
         \\
-        \\ pop %%ebx
-        \\ mov  %%bx, %%ds
-        \\ mov  %%bx, %%es
-        \\ mov  %%bx, %%gs
-        \\ mov  %%bx, %%fs
         \\ popa
         \\ add $8, %%esp
         \\ sti

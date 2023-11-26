@@ -1,6 +1,7 @@
 pub const serial = @import("arch/serial.zig");
 pub const gdt = @import("arch/gdt.zig");
 pub const paging = @import("arch/paging/paging.zig");
+pub const thread = @import("arch/thread.zig");
 
 pub const io = @import("arch/io.zig");
 
