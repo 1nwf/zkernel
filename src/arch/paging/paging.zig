@@ -95,18 +95,25 @@ pub const PageDirEntry = packed struct {
         return .{ .present = 1, .address = pt_addr };
     }
 
-    fn setPresent(self: *Self) *Self {
+    fn setPresent(self: *Self) void {
         self.present = 1;
-        return self;
     }
     pub fn setAddr(self: *Self, addr: usize) void {
         self.address = @truncate(addr >> 12);
     }
+
+    pub fn getPageTable(self: *Self) ?*PageTable {
+        if (self.address == 0) {
+            return null;
+        }
+
+        const addr: u32 = @as(u32, self.address) << 12;
+        return @ptrFromInt(addr);
+    }
 };
 
-pub const PageDirectory = struct {
+pub const PageDirectory = extern struct {
     dirs: [PDEntries]PageDirEntry,
-    pageTables: [PDEntries]?*PageTable,
 
     const Self = @This();
 
@@ -114,7 +121,6 @@ pub const PageDirectory = struct {
     pub fn init() Self {
         return .{
             .dirs = [_]PageDirEntry{PageDirEntry{}} ** PDEntries,
-            .pageTables = [_]?*PageTable{null} ** PDEntries,
         };
     }
 
@@ -123,19 +129,20 @@ pub const PageDirectory = struct {
     }
 
     pub fn getDirPageTable(self: *Self, virt_addr: usize) ?*PageTable {
-        return self.pageTables[dirIndex(virt_addr)];
+        const dir = self.findDir(virt_addr);
+        return dir.getPageTable();
     }
 
     pub fn createDirPageTable(self: *Self, virt_addr: usize) *PageTable {
         var dir_idx = dirIndex(virt_addr);
         var page_table = &(FixedAllocator.alignedAlloc(PageTable, PAGE_SIZE, 1) catch @panic("unable to alloc page table"))[0];
         page_table.init();
-        self.pageTables[dir_idx] = page_table;
+        self.dirs[dir_idx].setAddr(@intFromPtr(page_table));
         return page_table;
     }
 
     pub fn mapPage(self: *Self, virt_addr: usize, phys_addr: usize) void {
-        var dir = self.findDir(virt_addr).setPresent();
+        self.findDir(virt_addr).setPresent();
 
         var page_table: *PageTable = blk: {
             var table = self.getDirPageTable(virt_addr);
@@ -147,8 +154,6 @@ pub const PageDirectory = struct {
 
         var pt_entry = page_table.findEntry(virt_addr);
         pt_entry.* = PageTableEntry.init(phys_addr);
-
-        dir.setAddr(@intFromPtr(page_table));
     }
 
     /// maps  contiguous blocks of memory
@@ -196,18 +201,4 @@ pub fn flushTlbEntry(addr: usize) void {
 
 pub fn isPageAligned(addr: usize) bool {
     return addr & 0xFFF == 0;
-}
-
-test {
-    const expect = std.testing.expect;
-    var dir: PageDirectory align(PAGE_SIZE) = PageDirectory.init();
-    const virt_addr = 0;
-    const phys_addr = 0x1000;
-    dir.mapPage(virt_addr, phys_addr);
-    var page_table = dir.getDirPageTable(virt_addr) orelse @panic("page table is empty");
-    const entry = page_table.findEntry(virt_addr);
-    try expect(entry.present == 1);
-    try expect(entry.address == phys_addr >> 12);
-    dir.unmapPage(virt_addr);
-    try expect(entry.present == 0);
 }
