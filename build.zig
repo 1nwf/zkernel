@@ -53,7 +53,7 @@ pub fn build(b: *std.Build) !void {
         exe.addObjectFile(.{ .path = out });
     }
 
-    addUserspacePrograms(exe);
+    addUserspacePrograms(b, exe);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -211,8 +211,34 @@ const RunQemuStep = struct {
     }
 };
 
-pub fn addUserspacePrograms(exe: *Step.Compile) void {
-    exe.addAnonymousModule("userspace_programs/write.elf", .{ .source_file = .{
-        .path = "./userspace_programs/write/zig-out/bin/write",
-    } });
+pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
+    const target: std.zig.CrossTarget = .{
+        .cpu_arch = .x86,
+        .os_tag = Target.Os.Tag.freestanding,
+        .abi = Target.Abi.none,
+        .ofmt = .elf,
+        .cpu_model = .{ .explicit = &Target.x86.cpu.i386 },
+    };
+
+    const programs = [_][]const u8{"write"};
+    const stdlib = b.addModule("stdlib", .{
+        .source_file = .{ .path = "stdlib/stdlib.zig" },
+    });
+
+    for (programs) |p| {
+        const source_file = b.fmt("userspace_programs/{s}/src/main.zig", .{p});
+        const exe = b.addExecutable(.{
+            .name = p,
+            .root_source_file = .{ .path = source_file },
+            .target = target,
+            .optimize = .ReleaseSafe,
+            .linkage = .static,
+        });
+        exe.addModule("stdlib", stdlib);
+        std.Build.installArtifact(b, exe);
+        kernel_exe.step.dependOn(&exe.step);
+        kernel_exe.addAnonymousModule(b.fmt("userspace_programs/{s}.elf", .{p}), .{ .source_file = .{
+            .path = b.fmt("{s}/{s}", .{ b.exe_dir, exe.out_filename }),
+        } });
+    }
 }
