@@ -2,11 +2,14 @@ const std = @import("std");
 const writefn = @import("arch").serial.write;
 const log = std.log;
 
+const exit = @import("exit.zig").exit;
+
 pub const Syscall = enum(u32) {
     Write = 0,
+    Exit,
     fn fromInt(val: u32) ?@This() {
         return switch (val) {
-            0...0 => @enumFromInt(val),
+            0...1 => @enumFromInt(val),
             else => null,
         };
     }
@@ -19,7 +22,7 @@ pub const Syscall = enum(u32) {
 // %esi -> arg 4
 // %edi -> arg 5
 pub noinline fn syscall_handler() void {
-    const num: u32 = undefined;
+    var num: u32 = undefined;
     var arg1: u32 = undefined;
     var arg2: u32 = undefined;
     var arg3: u32 = undefined;
@@ -40,6 +43,7 @@ pub noinline fn syscall_handler() void {
             const fmt: *[]const u8 = @ptrFromInt(arg1);
             write(fmt.*);
         },
+        .Exit => exit(),
     }
 }
 

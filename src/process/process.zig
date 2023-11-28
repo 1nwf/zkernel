@@ -10,10 +10,10 @@ const mem = @import("../mem/mem.zig");
 extern const kernel_start: usize;
 extern const kernel_end: usize;
 
-var kernel_memory_region: mem.MemoryRegion = undefined;
+var kernel_memory_regions: []const mem.MemoryRegion = undefined;
 
-pub fn setKernelRegion() void {
-    kernel_memory_region = mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end) - @intFromPtr(&kernel_start));
+pub fn setKernelRegion(kernel_regions: []const mem.MemoryRegion) void {
+    kernel_memory_regions = kernel_regions;
 }
 
 page_dir: paging.PageDirectory align(paging.PAGE_SIZE),
@@ -22,7 +22,9 @@ const Self = @This();
 
 fn init() Self {
     var page_dir = paging.PageDirectory.init();
-    page_dir.mapRegions(kernel_memory_region.start, kernel_memory_region.start, kernel_memory_region.size);
+    for (kernel_memory_regions) |region| {
+        page_dir.mapRegions(region.start, region.start, region.size);
+    }
     return .{ .page_dir = page_dir };
 }
 

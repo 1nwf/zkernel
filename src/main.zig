@@ -57,7 +57,11 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     int.init();
     serial.init();
     vga.init(.{ .bg = .LightRed }, .Underline);
-    process.setKernelRegion();
+    const reserved_mem_regions = [_]mem.MemoryRegion{
+        mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end) - @intFromPtr(&kernel_start)),
+        mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
+    };
+    process.setKernelRegion(&reserved_mem_regions);
 
     vga.writeln("bootloader name: {s}", .{bootInfo.boot_loader_name});
     vga.writeln("header flags: 0b{b}", .{bootInfo.flags});
@@ -66,11 +70,6 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     vga.writeln("mmap length: {}", .{mem_map_length});
 
     const mem_map: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
-
-    var reserved_mem_regions = [_]mem.MemoryRegion{
-        mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end) - @intFromPtr(&kernel_start)),
-        mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
-    };
 
     var pmm = try mem.pmm.init(mem_map, allocator);
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
@@ -82,5 +81,4 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
 fn run_userspace_program() void {
     var file = @embedFile("userspace_programs/write.elf").*;
     process.run_user_program(&file) catch unreachable;
-    arch.halt();
 }
