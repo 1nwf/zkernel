@@ -20,7 +20,9 @@ pub fn enter_userspace(ip: u32, stack: u32) noreturn {
         : [user_code] "i" (gdt.user_code_offset | 3),
           [user_data] "i" (gdt.user_data_offset | 3),
           [stack] "r" (stack),
-          [ip] "i" (ip),
+          [ip] "r" (ip),
+        : "edx"
     );
+
     unreachable;
 }

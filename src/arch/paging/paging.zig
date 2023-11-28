@@ -157,7 +157,7 @@ pub const PageDirectory = extern struct {
     }
 
     pub fn mapUserPage(self: *Self, virt_addr: usize, phys_addr: usize) void {
-        var dir = self.findDir(virt_addr).setPresent();
+        self.findDir(virt_addr).setPresent();
 
         var page_table: *PageTable = blk: {
             var table = self.getDirPageTable(virt_addr);
@@ -170,8 +170,6 @@ pub const PageDirectory = extern struct {
         var pt_entry = page_table.findEntry(virt_addr);
         pt_entry.* = PageTableEntry.init(phys_addr);
         pt_entry.*.us = 1;
-
-        dir.setAddr(@intFromPtr(page_table));
     }
 
     /// maps  contiguous blocks of memory
@@ -211,7 +209,7 @@ pub inline fn tableIndex(addr: usize) u10 {
 /// invalidates tlb cache entry for the page associated with the given address
 pub fn flushTlbEntry(addr: usize) void {
     asm volatile (
-        \\ invlpg (%[addr]),
+        \\ invlpg (%[addr])
         :
         : [addr] "r" (addr),
     );
