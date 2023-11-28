@@ -1,4 +1,5 @@
 const std = @import("std");
+const writefn = @import("arch").serial.write;
 const log = std.log;
 
 pub const Syscall = enum(u32) {
@@ -42,6 +43,6 @@ pub noinline fn syscall_handler() void {
     }
 }
 
-pub fn write(str: []const u8) void {
-    log.info("{s}", .{str});
+fn write(str: []const u8) void {
+    writefn("{s}", .{str});
 }
