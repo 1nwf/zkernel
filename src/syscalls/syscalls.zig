@@ -1,5 +1,5 @@
 const std = @import("std");
-const writefn = @import("arch").serial.write;
+const writefn = @import("../drivers/vga.zig").write;
 const log = std.log;
 
 const exit = @import("exit.zig").exit;
