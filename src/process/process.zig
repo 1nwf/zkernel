@@ -51,16 +51,16 @@ pub fn runUserProgram(bin: []u8) !void {
             const aligned_addr = std.mem.alignBackward(usize, s.sh_addr, paging.PAGE_SIZE);
             const src = bin[s.sh_offset .. s.sh_offset + s.sh_size];
             const ssize = s.sh_size + (s.sh_addr - aligned_addr);
-            process.page_dir.mapRegions(aligned_addr, aligned_addr, ssize);
+            process.page_dir.mapUserRegions(aligned_addr, aligned_addr, ssize);
             const dst: [*]u8 = @ptrFromInt(s.sh_addr);
             @memcpy(dst, src);
         }
     }
 
-    var stack: [1024]u8 = undefined;
-
+    var stack: [paging.PAGE_SIZE]u8 align(paging.PAGE_SIZE) = undefined;
+    process.page_dir.mapUserRegions(@intFromPtr(&stack), 0, paging.PAGE_SIZE);
     ACTIVE_PROCESS = &process;
-    thread.enter_userspace(@intCast(header.entry), @intFromPtr(&stack));
+    thread.enter_userspace(@intCast(header.entry), paging.PAGE_SIZE);
 }
 
 pub fn deinit(self: *Self) void {

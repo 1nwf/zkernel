@@ -45,7 +45,7 @@ const PDEntries = 1024;
 pub const PageTableEntry = packed struct {
     present: u1 = 0,
     rw: u1 = 1, // read/write
-    us: u1 = 1, // user/supervisor (1 = user mode (can't r/w kernel pages))
+    us: u1 = 0, // user/supervisor (1 = user mode (can't r/w kernel pages))
     _: u2 = 0, // reserved by intel
     accessed: u1 = 0,
     dirty: u1 = 0, // dirty (1 = page has been written to)
@@ -157,7 +157,9 @@ pub const PageDirectory = extern struct {
     }
 
     pub fn mapUserPage(self: *Self, virt_addr: usize, phys_addr: usize) void {
-        self.findDir(virt_addr).setPresent();
+        var dir = self.findDir(virt_addr);
+        dir.setPresent();
+        dir.us = 1;
 
         var page_table: *PageTable = blk: {
             var table = self.getDirPageTable(virt_addr);
@@ -183,6 +185,15 @@ pub const PageDirectory = extern struct {
         }
     }
 
+    pub fn mapUserRegions(self: *Self, phys_addr: usize, virt_addr: usize, region_size: usize) void {
+        std.debug.assert(isPageAligned(phys_addr));
+        std.debug.assert(isPageAligned(virt_addr));
+        var start: usize = 0;
+        while (start < region_size) : (start += PAGE_SIZE) {
+            self.mapUserPage(virt_addr + start, phys_addr + start);
+        }
+    }
+
     pub fn unmapPage(self: *Self, addr: usize) void {
         var page_table = self.getDirPageTable(addr) orelse return;
         var table_entry = page_table.findEntry(addr);
@@ -200,7 +211,6 @@ pub const PageDirectory = extern struct {
 
     pub fn deinit(self: *Self) void {
         for (&self.dirs) |*dir| {
-            if (dir.present == 0) continue;
             const page_table = dir.getPageTable() orelse continue;
             FixedAllocator.destroy(page_table);
         }
