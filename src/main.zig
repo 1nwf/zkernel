@@ -61,7 +61,7 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
         mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end) - @intFromPtr(&kernel_start)),
         mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
     };
-    process.setKernelRegion(&reserved_mem_regions);
+    process.setKernelRegion(&kernel_page_dir, &reserved_mem_regions);
 
     vga.writeln("bootloader name: {s}", .{bootInfo.boot_loader_name});
     vga.writeln("header flags: 0b{b}", .{bootInfo.flags});
@@ -75,10 +75,10 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
-    run_userspace_program();
+    runUserspaceProgram();
 }
 
-fn run_userspace_program() void {
+fn runUserspaceProgram() void {
     var file = @embedFile("userspace_programs/write.elf").*;
-    process.run_user_program(&file) catch unreachable;
+    process.runUserProgram(&file) catch unreachable;
 }

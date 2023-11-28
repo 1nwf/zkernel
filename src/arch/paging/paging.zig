@@ -197,6 +197,14 @@ pub const PageDirectory = extern struct {
             : [addr] "{eax}" (@intFromPtr(self)),
         );
     }
+
+    pub fn deinit(self: *Self) void {
+        for (&self.dirs) |*dir| {
+            if (dir.present == 0) continue;
+            const page_table = dir.getPageTable() orelse continue;
+            FixedAllocator.destroy(page_table);
+        }
+    }
 };
 
 pub inline fn dirIndex(addr: usize) u10 {

@@ -41,12 +41,8 @@ pub noinline fn syscall_handler() void {
     switch (syscall_num) {
         .Write => {
             const fmt: *[]const u8 = @ptrFromInt(arg1);
-            write(fmt.*);
+            writefn("{s}", .{fmt.*});
         },
         .Exit => exit(),
     }
-}
-
-fn write(str: []const u8) void {
-    writefn("{s}", .{str});
 }
