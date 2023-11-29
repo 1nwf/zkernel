@@ -75,7 +75,7 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     _ = vmm;
 
     var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
-
+    ProcessLauncher.launcher = &process_launcher;
     runUserspaceProgram(&process_launcher);
 }
 

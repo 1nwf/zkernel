@@ -11,25 +11,23 @@ const Process = @import("process.zig");
 
 const Self = @This();
 
-var ACTIVE_PROCESS: ?*Process = null;
-
-pub var launcher: Self = undefined;
+pub var launcher: *Self = undefined;
 
 phys_frame_allocator: *PhysFrameAllocator,
 kernel_page_dir: *paging.PageDirectory,
 kernel_regions: []const mem.MemoryRegion,
+active_process: ?*Process = null,
 
 pub fn init(
     phys_frame_allocator: *PhysFrameAllocator,
     kernel_page_dir: *paging.PageDirectory,
     kernel_regions: []const mem.MemoryRegion,
 ) Self {
-    launcher = .{
+    return .{
         .phys_frame_allocator = phys_frame_allocator,
         .kernel_page_dir = kernel_page_dir,
         .kernel_regions = kernel_regions,
     };
-    return launcher;
 }
 
 pub fn runProgram(self: *Self, bin: []u8) !void {
@@ -56,22 +54,26 @@ pub fn runProgram(self: *Self, bin: []u8) !void {
             const aligned_addr = std.mem.alignBackward(usize, s.sh_addr, paging.PAGE_SIZE);
             const src = bin[s.sh_offset .. s.sh_offset + s.sh_size];
             const ssize = s.sh_size + (s.sh_addr - aligned_addr);
-            process.page_dir.mapUserRegions(aligned_addr, aligned_addr, ssize);
+            try process.mapPages(aligned_addr, ssize, self.phys_frame_allocator);
             const dst: [*]u8 = @ptrFromInt(s.sh_addr);
             @memcpy(dst, src);
         }
     }
 
-    var stack: [paging.PAGE_SIZE]u8 align(paging.PAGE_SIZE) = undefined;
-    process.page_dir.mapUserRegions(@intFromPtr(&stack), 0, paging.PAGE_SIZE);
-    ACTIVE_PROCESS = &process;
+    const user_stack = try self.phys_frame_allocator.alloc();
+    process.page_dir.mapUserRegions(user_stack, 0, paging.PAGE_SIZE);
+    self.active_process = &process;
     thread.enter_userspace(@intCast(header.entry), paging.PAGE_SIZE);
 }
 
 pub fn destroyActiveProcess(self: *Self) void {
-    ACTIVE_PROCESS = null;
     self.kernel_page_dir.load();
-    if (ACTIVE_PROCESS) |p| {
-        p.deinit();
+    if (self.active_process) |p| {
+        p.deinit(deinit_cb);
     }
+    self.active_process = null;
+}
+
+fn deinit_cb(addr: usize) void {
+    launcher.phys_frame_allocator.free(addr);
 }

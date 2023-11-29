@@ -43,7 +43,7 @@ const PTEntries = 1024;
 const PDEntries = 1024;
 
 pub const PageTableEntry = packed struct {
-    present: u1 = 0,
+    present: bool = false,
     rw: u1 = 1, // read/write
     us: u1 = 0, // user/supervisor (1 = user mode (can't r/w kernel pages))
     _: u2 = 0, // reserved by intel
@@ -54,7 +54,7 @@ pub const PageTableEntry = packed struct {
     address: u20 = 0,
     const Self = @This();
     pub fn init(frame: usize) Self {
-        return .{ .present = 1, .address = @truncate(frame >> 12) };
+        return .{ .present = true, .address = @truncate(frame >> 12) };
     }
     pub fn setAddr(self: *Self, addr: usize) *Self {
         self.address = @truncate(addr >> 12);
@@ -79,9 +79,9 @@ const PageTable = struct {
 };
 
 pub const PageDirEntry = packed struct {
-    present: u1 = 0,
+    present: bool = false,
     rw: u1 = 1, // read/write
-    us: u1 = 1, // user/supervisor
+    us: u1 = 0, // user/supervisor
     wt: u1 = 0, // write through. 1 = disabled
     cache: u1 = 0, // cache disabled
     accessed: u1 = 0,
@@ -91,12 +91,9 @@ pub const PageDirEntry = packed struct {
     avail: u3 = 0, // (avail) ignored
     address: u20 = 0,
     const Self = @This();
-    pub fn init(pt_addr: u20) Self {
-        return .{ .present = 1, .address = pt_addr };
-    }
 
     fn setPresent(self: *Self) void {
-        self.present = 1;
+        self.present = true;
     }
     pub fn setAddr(self: *Self, addr: usize) void {
         self.address = @truncate(addr >> 12);
@@ -209,9 +206,15 @@ pub const PageDirectory = extern struct {
         );
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: *Self, cb: *const fn (usize) void) void {
+        // TODO: improve performance by tracking allocations
         for (&self.dirs) |*dir| {
             const page_table = dir.getPageTable() orelse continue;
+            for (&page_table.entries) |*pte| {
+                if (pte.present and pte.us == 1) {
+                    cb(@as(u32, pte.address) << 12);
+                }
+            }
             FixedAllocator.destroy(page_table);
         }
     }
