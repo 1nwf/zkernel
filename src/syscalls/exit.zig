@@ -1,7 +1,7 @@
 const arch = @import("arch");
-const process = @import("../process/process.zig");
+const process_launcher = @import("../process/launcher.zig");
 
 pub fn exit() void {
-    process.destroyActiveProcess();
+    process_launcher.launcher.destroyActiveProcess();
     arch.halt();
 }

@@ -15,7 +15,7 @@ const pci = @import("drivers/pci/pci.zig");
 const debug = @import("debug/debug.zig");
 
 const mem = @import("mem/mem.zig");
-const process = @import("process/process.zig");
+const ProcessLauncher = @import("process/launcher.zig");
 
 export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
     main(bootInfo) catch |e| {
@@ -61,7 +61,6 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
         mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end) - @intFromPtr(&kernel_start)),
         mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
     };
-    process.setKernelRegion(&kernel_page_dir, &reserved_mem_regions);
 
     vga.writeln("bootloader name: {s}", .{bootInfo.boot_loader_name});
     vga.writeln("header flags: 0b{b}", .{bootInfo.flags});
@@ -75,10 +74,12 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
-    runUserspaceProgram();
+    var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
+
+    runUserspaceProgram(&process_launcher);
 }
 
-fn runUserspaceProgram() void {
+fn runUserspaceProgram(launcher: *ProcessLauncher) void {
     var file = @embedFile("userspace_programs/write.elf").*;
-    process.runUserProgram(&file) catch unreachable;
+    launcher.runProgram(&file) catch unreachable;
 }
