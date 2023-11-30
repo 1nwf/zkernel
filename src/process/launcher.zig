@@ -11,7 +11,7 @@ const Process = @import("process.zig");
 
 const Self = @This();
 
-pub var launcher: *Self = undefined;
+pub var launcher: Self = undefined;
 
 phys_frame_allocator: *PhysFrameAllocator,
 kernel_page_dir: *paging.PageDirectory,
@@ -22,12 +22,13 @@ pub fn init(
     phys_frame_allocator: *PhysFrameAllocator,
     kernel_page_dir: *paging.PageDirectory,
     kernel_regions: []const mem.MemoryRegion,
-) Self {
-    return .{
+) *Self {
+    launcher = .{
         .phys_frame_allocator = phys_frame_allocator,
         .kernel_page_dir = kernel_page_dir,
         .kernel_regions = kernel_regions,
     };
+    return &launcher;
 }
 
 pub fn runProgram(self: *Self, bin: []u8) !void {
