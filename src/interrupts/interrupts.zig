@@ -4,6 +4,9 @@ const keyboard = @import("../drivers/keyboard.zig");
 const timer = @import("timer.zig");
 const isr = @import("isr.zig");
 const irq = @import("irq.zig");
+const arch = @import("arch");
+const log = @import("std").log.scoped(.int);
+const syscalls = @import("syscall.zig");
 
 const pageFaultHandler = @import("page_fault.zig").pageFaultHandler;
 const IrqHandler = *const fn () callconv(.C) void;
@@ -14,7 +17,7 @@ pub fn init() void {
     pic.remapPic(0x20, 0x28);
     keyboard.init_keyboard();
     timer.init_timer(20);
-    idt.idt = [_]idt.Entry{idt.Entry.init(@intFromPtr(&isr.isr_common))} ** 256;
+    idt.idt = [_]idt.Entry{idt.Entry.init(@intFromPtr(&isr.isr_common), 3)} ** 256;
     initExceptions();
     initInterrupts();
     idt.descriptor = idt.IDTDescr.init(@sizeOf(idt.IDT) - 1, @intFromPtr(&idt.idt));
@@ -67,8 +70,10 @@ pub fn initExceptions() void {
         isr.isr31,
     };
     for (fns, 0..) |handler, i| {
-        idt.setHandler(@as(u8, @truncate(i)), @intFromPtr(handler));
+        idt.setHandler(@as(u8, @truncate(i)), @intFromPtr(handler), 0);
     }
+
+    idt.setHandler(@as(u8, 48), @intFromPtr(&syscalls.int_handler), 3);
 }
 
 pub fn initInterrupts() void {
@@ -91,11 +96,14 @@ pub fn initInterrupts() void {
         irq.irq15,
     };
     for (fns, 32..) |handler, i| {
-        idt.setHandler(@as(u8, @truncate(i)), @intFromPtr(handler));
+        idt.setHandler(@as(u8, @truncate(i)), @intFromPtr(handler), 0);
     }
 }
 
-export fn default_handler(_: Context) void {}
+export fn default_handler(ctx: Context) void {
+    log.err("interrupt: {}", .{ctx.int_num});
+    arch.halt();
+}
 pub var interrupt_handlers = [_]Handler{default_handler} ** 256;
 const Handler = *const fn (Context) callconv(.C) void;
 
@@ -108,7 +116,6 @@ pub fn setExceptionHandler(comptime idx: usize, comptime h: Handler) void {
 }
 
 pub const Context = extern struct {
-    ds: u32,
     edi: u32,
     esi: u32,
     ebp: u32,

@@ -5,19 +5,14 @@ const arch = @import("arch");
 export fn isr_handler(ctx: int.Context) void {
     const handler = int.interrupt_handlers[ctx.int_num];
     handler(ctx);
-    arch.halt();
 }
 
 pub export fn isr_common() callconv(.Naked) void {
     asm volatile (
-        \\ cli
         \\ pusha
-        \\ mov %%ds, %%ax
-        \\ push %%eax // push data segment
         \\
         \\ call isr_handler
         \\
-        \\ pop %%eax
         \\ popa
         \\ add $8, %%esp
         \\ sti

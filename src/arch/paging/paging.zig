@@ -43,9 +43,9 @@ const PTEntries = 1024;
 const PDEntries = 1024;
 
 pub const PageTableEntry = packed struct {
-    present: u1 = 0,
+    present: bool = false,
     rw: u1 = 1, // read/write
-    us: u1 = 1, // user/supervisor (1 = user mode (can't r/w kernel pages))
+    us: u1 = 0, // user/supervisor (1 = user mode (can't r/w kernel pages))
     _: u2 = 0, // reserved by intel
     accessed: u1 = 0,
     dirty: u1 = 0, // dirty (1 = page has been written to)
@@ -54,7 +54,7 @@ pub const PageTableEntry = packed struct {
     address: u20 = 0,
     const Self = @This();
     pub fn init(frame: usize) Self {
-        return .{ .present = 1, .address = @truncate(frame >> 12) };
+        return .{ .present = true, .address = @truncate(frame >> 12) };
     }
     pub fn setAddr(self: *Self, addr: usize) *Self {
         self.address = @truncate(addr >> 12);
@@ -79,9 +79,9 @@ const PageTable = struct {
 };
 
 pub const PageDirEntry = packed struct {
-    present: u1 = 0,
+    present: bool = false,
     rw: u1 = 1, // read/write
-    us: u1 = 1, // user/supervisor
+    us: u1 = 0, // user/supervisor
     wt: u1 = 0, // write through. 1 = disabled
     cache: u1 = 0, // cache disabled
     accessed: u1 = 0,
@@ -91,12 +91,9 @@ pub const PageDirEntry = packed struct {
     avail: u3 = 0, // (avail) ignored
     address: u20 = 0,
     const Self = @This();
-    pub fn init(pt_addr: u20) Self {
-        return .{ .present = 1, .address = pt_addr };
-    }
 
     fn setPresent(self: *Self) void {
-        self.present = 1;
+        self.present = true;
     }
     pub fn setAddr(self: *Self, addr: usize) void {
         self.address = @truncate(addr >> 12);
@@ -124,7 +121,7 @@ pub const PageDirectory = extern struct {
         };
     }
 
-    inline fn findDir(self: *Self, addr: usize) *PageDirEntry {
+    pub inline fn findDir(self: *Self, addr: usize) *PageDirEntry {
         return &self.dirs[dirIndex(addr)];
     }
 
@@ -156,6 +153,24 @@ pub const PageDirectory = extern struct {
         pt_entry.* = PageTableEntry.init(phys_addr);
     }
 
+    pub fn mapUserPage(self: *Self, virt_addr: usize, phys_addr: usize) void {
+        var dir = self.findDir(virt_addr);
+        dir.setPresent();
+        dir.us = 1;
+
+        var page_table: *PageTable = blk: {
+            var table = self.getDirPageTable(virt_addr);
+            if (table) |t| {
+                break :blk t;
+            }
+            break :blk self.createDirPageTable(virt_addr);
+        };
+
+        var pt_entry = page_table.findEntry(virt_addr);
+        pt_entry.* = PageTableEntry.init(phys_addr);
+        pt_entry.*.us = 1;
+    }
+
     /// maps  contiguous blocks of memory
     /// args must be page aligned
     pub fn mapRegions(self: *Self, phys_addr: usize, virt_addr: usize, region_size: usize) void {
@@ -164,6 +179,15 @@ pub const PageDirectory = extern struct {
         var start: usize = 0;
         while (start < region_size) : (start += PAGE_SIZE) {
             self.mapPage(virt_addr + start, phys_addr + start);
+        }
+    }
+
+    pub fn mapUserRegions(self: *Self, phys_addr: usize, virt_addr: usize, region_size: usize) void {
+        std.debug.assert(isPageAligned(phys_addr));
+        std.debug.assert(isPageAligned(virt_addr));
+        var start: usize = 0;
+        while (start < region_size) : (start += PAGE_SIZE) {
+            self.mapUserPage(virt_addr + start, phys_addr + start);
         }
     }
 
@@ -181,6 +205,19 @@ pub const PageDirectory = extern struct {
             : [addr] "{eax}" (@intFromPtr(self)),
         );
     }
+
+    pub fn deinit(self: *Self, cb: *const fn (usize) void) void {
+        // TODO: improve performance by tracking allocations
+        for (&self.dirs) |*dir| {
+            const page_table = dir.getPageTable() orelse continue;
+            for (&page_table.entries) |*pte| {
+                if (pte.present and pte.us == 1) {
+                    cb(@as(u32, pte.address) << 12);
+                }
+            }
+            FixedAllocator.destroy(page_table);
+        }
+    }
 };
 
 pub inline fn dirIndex(addr: usize) u10 {
@@ -193,7 +230,7 @@ pub inline fn tableIndex(addr: usize) u10 {
 /// invalidates tlb cache entry for the page associated with the given address
 pub fn flushTlbEntry(addr: usize) void {
     asm volatile (
-        \\ invlpg (%[addr]),
+        \\ invlpg (%[addr])
         :
         : [addr] "r" (addr),
     );
