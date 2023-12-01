@@ -14,6 +14,8 @@ const boot = @import("boot/mutliboot_header.zig");
 const pci = @import("drivers/pci/pci.zig");
 const debug = @import("debug/debug.zig");
 
+const display = @import("drivers/display/display.zig");
+
 const mem = @import("mem/mem.zig");
 const ProcessLauncher = @import("process/launcher.zig");
 
@@ -74,8 +76,14 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
-    var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
-    runUserspaceProgram(process_launcher);
+    // var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
+    // runUserspaceProgram(process_launcher);
+
+    var pci_devs = try pci.init(allocator);
+    const vga_device = pci_devs.find(0x1234, 0x1111) orelse @panic("unable to find vga device");
+    display.init(vga_device, &kernel_page_dir);
+    const pixel = display.Pixel{ .b = 0xff };
+    display.drawRect(pixel, 500 - 100, 200, 200, 200);
 }
 
 fn runUserspaceProgram(launcher: *ProcessLauncher) void {

@@ -83,21 +83,24 @@ pub const PciRegisters = enum(u8) {
     }
 };
 
-pub fn init(allocator: std.mem.Allocator) !void {
+devices: []Device,
+pub fn init(allocator: std.mem.Allocator) !@This() {
     const devices = try getAllDevices(allocator);
-    var ide_device: *Device = undefined;
-    for (devices) |*d| {
-        if (d.location.readConfig(.ClassCode) == 1 and d.location.readConfig(.Subclass) == 1) {
-            ide_device = d;
-        }
+    return .{
+        .devices = devices,
+    };
+}
 
-        const vendor = d.location.readConfig(.VenderId);
-        const deviceid = d.location.readConfig(.DeviceId);
-        const subsystem = d.location.readConfig(.SubsystemId);
-        log.info("{s} - {x} -- {x} -- {}", .{ d.getTypeName(), vendor, deviceid, subsystem });
+pub fn find(self: *const @This(), vendor: u16, device_id: u16) ?*Device {
+    for (self.devices) |*dev| {
+        const v = dev.readConfig(.VenderId);
+        const dev_id = dev.readConfig(.DeviceId);
+        if (v == vendor and dev_id == device_id) {
+            return dev;
+        }
     }
 
-    ide.init(ide_device);
+    return null;
 }
 
 pub const Device = struct {
@@ -108,6 +111,53 @@ pub const Device = struct {
     const Self = @This();
     fn getTypeName(self: *const Self) []const u8 {
         return deviceInfo.getDeviceType(self.class, self.subclass);
+    }
+
+    pub fn readConfig(self: Self, comptime reg: PciRegisters) reg.getWidth() {
+        var addr: PciAddress = .{
+            .register_offset = reg,
+            .location = self.location,
+        };
+        return addr.configRead(reg.getWidth());
+    }
+
+    pub const Bar = union(enum) { Empty, Io: u16, Mem: u32 };
+
+    pub fn read_bar(self: *const Self, comptime idx: usize) Bar {
+        const reg: PciRegisters = switch (idx) {
+            0 => .BaseAddr0,
+            1 => .BaseAddr1,
+            2 => .BaseAddr2,
+            3 => .BaseAddr3,
+            4 => .BaseAddr4,
+            5 => .BaseAddr5,
+            else => @compileError("access to invalid bar"),
+        };
+
+        const value = self.location.readConfig(reg);
+        if (value == 0) return .Empty;
+        const is_io = value & 1 == 1;
+        if (is_io) {
+            const io_addr = value & ~@as(u32, 0b11);
+            return Bar{ .Io = @intCast(io_addr) };
+        }
+
+        const is_64bit = value & 4 == 4;
+        if (is_64bit) return .Empty;
+
+        const mem_addr = value & ~@as(u32, 0x8);
+        return Bar{ .Mem = mem_addr };
+    }
+
+    fn writeConfig(self: *const Self, comptime reg: PciRegisters, data: anytype) void {
+        const addr = PciAddress{ .register_offset = reg, .location = self.location };
+        io.out(CONFIG_ADDRESS, addr.asBits());
+        io.out(CONFIG_DATA, data);
+    }
+    // allow device to do DMA
+    pub fn enableBusMastering(self: *const Self) void {
+        const config = self.readConfig(.Command);
+        self.writeConfig(.Command, config | (1 << 2));
     }
 };
 
