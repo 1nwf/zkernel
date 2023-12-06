@@ -16,7 +16,7 @@ pub fn init() void {
     disable();
     pic.remapPic(0x20, 0x28);
     keyboard.init_keyboard();
-    timer.init_timer(20);
+    timer.init_timer(1000);
     idt.idt = [_]idt.Entry{idt.Entry.init(@intFromPtr(&isr.isr_common), 3)} ** 256;
     initExceptions();
     initInterrupts();
