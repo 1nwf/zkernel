@@ -15,6 +15,7 @@ const pci = @import("drivers/pci/pci.zig");
 const debug = @import("debug/debug.zig");
 
 const display = @import("drivers/display/display.zig");
+const font = display.font;
 
 const mem = @import("mem/mem.zig");
 const ProcessLauncher = @import("process/launcher.zig");
@@ -80,10 +81,12 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     // runUserspaceProgram(process_launcher);
 
     var pci_devs = try pci.init(allocator);
-    const vga_device = pci_devs.find(0x1234, 0x1111) orelse @panic("unable to find vga device");
-    display.init(vga_device, &kernel_page_dir);
+    const vga_controller = pci_devs.find(0x1234, 0x1111) orelse @panic("unable to find vga device");
+    display.init(vga_controller, &kernel_page_dir);
+    display.setBackground(@bitCast(@as(u32, 0xffffffff)));
     const pixel = display.Pixel{ .b = 0xff };
     display.drawRect(pixel, 500 - 100, 200, 200, 200);
+    font.drawString("test 000000011123 hello", 0, 100);
 }
 
 fn runUserspaceProgram(launcher: *ProcessLauncher) void {

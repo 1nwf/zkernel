@@ -5,6 +5,7 @@ const arch = @import("arch");
 const paging = arch.paging;
 const framebuffer = @import("framebuffer.zig");
 pub const Pixel = framebuffer.Pixel;
+pub const font = @import("font.zig");
 
 pub usingnamespace @import("graphics.zig");
 const vga = @import("vga.zig");
