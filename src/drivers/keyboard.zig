@@ -2,6 +2,8 @@ const int = @import("../interrupts/interrupts.zig");
 const in = @import("arch").io.in;
 const write = @import("vga.zig").write;
 
+const display = @import("../drivers/display/display.zig");
+
 const unicode = @import("std").unicode;
 const sendEoi = @import("../interrupts/pic.zig").sendEoi;
 pub fn init_keyboard() void {
@@ -9,6 +11,9 @@ pub fn init_keyboard() void {
 }
 
 var modifiers = Modifiers.init();
+var y: usize = 30;
+var x: usize = 0;
+
 export fn keyboardHandler(ctx: int.Context) void {
     _ = ctx;
     const scancode = in(0x60, u8);
@@ -23,7 +28,21 @@ export fn keyboardHandler(ctx: int.Context) void {
 
     var letter = key.decode();
 
-    write("{u}", .{letter.value});
+    if (display.height - 10 <= y) {
+        y = 30;
+        if (display.width == x) x = 0;
+    } else if (display.width == x) {
+        x = 0;
+        y += 8;
+    }
+
+    if (letter.value == '\n') {
+        y += 8;
+        x = 0;
+        return;
+    }
+    display.font.drawChar(@intCast(letter.value), x, y);
+    x += 8;
 }
 
 // ported from https://crates.io/crates/pc-keyboard Us104Key keyboard layout

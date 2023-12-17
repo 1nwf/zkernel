@@ -86,7 +86,6 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     display.setBackground(@bitCast(@as(u32, 0xffffffff)));
     const pixel = display.Pixel{ .b = 0xff };
     display.drawRect(pixel, 500 - 100, 200, 200, 200);
-    font.drawString("test 000000011123 hello", 0, 100);
 }
 
 fn runUserspaceProgram(launcher: *ProcessLauncher) void {
