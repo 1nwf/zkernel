@@ -16,7 +16,7 @@ pub fn init(mem_map: []MemMapEntry, allocator: Allocator) !Self {
     var size: usize = 0;
     for (mem_map) |mem| {
         if (mem.type != .Available) continue;
-        var region = MemRegion.init(@intCast(mem.base_addr), @intCast(mem.length));
+        var region = MemRegion.init(@intCast(mem.base_addr), @intCast(mem.len));
         try free_mem.append(region);
         size += region.size;
     }
