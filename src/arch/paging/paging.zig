@@ -24,6 +24,30 @@ pub fn isEnabled() bool {
     return (cr0 >> 31) == 1;
 }
 
+fn alignRegion(phys_start: usize, virt_start: usize, size: usize) struct {
+    phys_addr: usize,
+    virt_addr: usize,
+    size: usize,
+} {
+    const pstart = std.mem.alignBackward(usize, phys_start, PAGE_SIZE);
+    const vstart = std.mem.alignBackward(usize, virt_start, PAGE_SIZE);
+    const aligned_size = std.mem.alignForward(usize, (phys_start - pstart) + size, PAGE_SIZE);
+    return .{
+        .phys_addr = pstart,
+        .virt_addr = vstart,
+        .size = aligned_size,
+    };
+}
+
+pub fn mapRegion(phys_start: usize, virt_start: usize, size: usize) void {
+    const aligned_region = alignRegion(phys_start, virt_start, size);
+    var active_pgdir: *PageDirectory = asm volatile (
+        \\ mov %%cr3, %[x]
+        : [x] "=r" (-> *PageDirectory),
+    );
+    active_pgdir.mapRegions(aligned_region.phys_addr, aligned_region.virt_addr, aligned_region.size);
+}
+
 // NOTE: in protected mode, two level paging is used
 // an address is first translated from a logical --> linear via segmentation
 // then it is translated from linear --> physical via paging
@@ -131,7 +155,7 @@ pub const PageDirectory = extern struct {
     }
 
     pub fn createDirPageTable(self: *Self, virt_addr: usize) *PageTable {
-        var dir_idx = dirIndex(virt_addr);
+        const dir_idx = dirIndex(virt_addr);
         var page_table = &(FixedAllocator.alignedAlloc(PageTable, PAGE_SIZE, 1) catch @panic("unable to alloc page table"))[0];
         page_table.init();
         self.dirs[dir_idx].setAddr(@intFromPtr(page_table));
@@ -142,14 +166,14 @@ pub const PageDirectory = extern struct {
         self.findDir(virt_addr).setPresent();
 
         var page_table: *PageTable = blk: {
-            var table = self.getDirPageTable(virt_addr);
+            const table = self.getDirPageTable(virt_addr);
             if (table) |t| {
                 break :blk t;
             }
             break :blk self.createDirPageTable(virt_addr);
         };
 
-        var pt_entry = page_table.findEntry(virt_addr);
+        const pt_entry = page_table.findEntry(virt_addr);
         pt_entry.* = PageTableEntry.init(phys_addr);
     }
 
@@ -159,14 +183,14 @@ pub const PageDirectory = extern struct {
         dir.us = 1;
 
         var page_table: *PageTable = blk: {
-            var table = self.getDirPageTable(virt_addr);
+            const table = self.getDirPageTable(virt_addr);
             if (table) |t| {
                 break :blk t;
             }
             break :blk self.createDirPageTable(virt_addr);
         };
 
-        var pt_entry = page_table.findEntry(virt_addr);
+        const pt_entry = page_table.findEntry(virt_addr);
         pt_entry.* = PageTableEntry.init(phys_addr);
         pt_entry.*.us = 1;
     }

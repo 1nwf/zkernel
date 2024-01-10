@@ -23,9 +23,10 @@ pub const MemoryRegion = struct {
     size: usize,
 
     pub fn init(start: usize, size: usize) @This() {
+        const aligned_start = std.mem.alignBackward(usize, start, PAGE_SIZE);
         return .{
-            .start = std.mem.alignBackward(usize, start, PAGE_SIZE),
-            .size = std.mem.alignForward(usize, size, PAGE_SIZE),
+            .start = aligned_start,
+            .size = std.mem.alignForward(usize, (start - aligned_start) + size, PAGE_SIZE),
         };
     }
 

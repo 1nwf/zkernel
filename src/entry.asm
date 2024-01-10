@@ -1,5 +1,7 @@
 extern kmain
 extern kernel_stack_end
+extern ap_start
+
 global _start ; kernel elf entry point
 
 section .multiboot

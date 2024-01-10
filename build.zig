@@ -38,9 +38,13 @@ pub fn build(b: *std.Build) !void {
 
     const nasm_sources = [_][]const u8{
         "src/entry.asm",
+        "src/smp_trampoline.asm",
     };
 
     const nasm_out = compileNasmSource(b, &nasm_sources);
+    for (nasm_out) |out| {
+        exe.addObjectFile(.{ .path = out });
+    }
 
     const arch = b.addModule("arch", .{
         .source_file = .{
@@ -48,10 +52,6 @@ pub fn build(b: *std.Build) !void {
         },
     });
     exe.addModule("arch", arch);
-
-    for (nasm_out) |out| {
-        exe.addObjectFile(.{ .path = out });
-    }
 
     addUserspacePrograms(b, exe);
 
@@ -203,7 +203,7 @@ const RunQemuStep = struct {
 
     const Self = @This();
     fn init(b: *std.Build, iso_path: []const u8, nodisplay: bool, options: ?[]const []const u8) Self {
-        var sys_cmd = b.addSystemCommand(&.{ "qemu-system-i386", "-boot", "d", "-cdrom", iso_path, "-m", "128M", "-nic", "user,model=virtio" });
+        var sys_cmd = b.addSystemCommand(&.{ "qemu-system-i386", "-boot", "d", "-cdrom", iso_path, "-m", "128M", "-nic", "user,model=virtio", "-smp", "2" });
         sys_cmd.step.dependOn(b.default_step);
         if (nodisplay) {
             sys_cmd.addArgs(&.{ "--display", "none" });
@@ -219,7 +219,7 @@ const RunQemuStep = struct {
 };
 
 pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
-    const target: std.zig.CrossTarget = .{
+    const target = std.zig.CrossTarget{
         .cpu_arch = .x86,
         .os_tag = Target.Os.Tag.freestanding,
         .abi = Target.Abi.none,

@@ -17,17 +17,16 @@ pub fn init_timer(freq: u32) void {
 var ticks: u32 = 0;
 var interval: u32 = 0;
 
-pub export fn timer_handler(ctx: int.Context) void {
-    _ = ctx;
-    // ticks += 1;
+pub export fn timer_handler(_: int.Context) void {
+    ticks += 1;
 }
 
 pub fn read_count() u16 {
     var count: u16 = 0;
 
     io.out(0x43, @as(u8, 0));
-    var low = io.in(0x40, u8);
-    var high = io.in(0x40, u8);
+    const low = io.in(0x40, u8);
+    const high = io.in(0x40, u8);
 
     count = high;
     count = (count << 8) | low;
@@ -35,11 +34,10 @@ pub fn read_count() u16 {
     return count;
 }
 
-pub export fn wait(secs: u32) void {
-    var target = ticks + (secs * interval);
+pub fn wait(ms: u32) void {
+    var target = ticks + ms;
     while (ticks < target) {
-        asm volatile ("nop");
+        asm volatile ("hlt");
     }
-
     return;
 }

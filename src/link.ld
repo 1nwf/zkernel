@@ -1,4 +1,10 @@
 SECTIONS {
+	. = 0x8000;
+
+	.smp_trampoline : ALIGN(4K) {
+		KEEP(*(.smp_trampoline))
+	}
+
     . = 1M;
 	kernel_start = .; 
 
