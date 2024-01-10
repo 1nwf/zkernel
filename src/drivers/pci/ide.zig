@@ -85,7 +85,7 @@ pub fn init(dev: *pci.Device) void {
     log.info("progif: {b}", .{progif});
 
     // if bars 0-3 are 0, that means ide is running in compatibility mode
-    var primary = Channel{
+    const primary = Channel{
         .base = if (bar0 != 0) @intCast(bar0) else 0x1f0,
         .control = if (bar1 != 0) @intCast(bar1) else 0x3F6,
         .bmide = @intCast(bar4),

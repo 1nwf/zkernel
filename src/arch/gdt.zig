@@ -130,6 +130,6 @@ pub fn storedGDT() @TypeOf(GDT) {
         : [val] "=m" (ptr),
     );
 
-    var data = @as(*@TypeOf(GDT), @ptrFromInt(ptr.base));
+    const data = @as(*@TypeOf(GDT), @ptrFromInt(ptr.base));
     return data.*;
 }

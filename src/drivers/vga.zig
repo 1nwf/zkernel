@@ -84,8 +84,8 @@ fn newLine(self: *Screen) void {
 
 pub fn scroll(self: *Screen) void {
     var idx: usize = 80;
-    var empty_char = Char.create(' ', self.style);
-    var currentIdx = (self.height * max_width) + self.width;
+    const empty_char = Char.create(' ', self.style);
+    const currentIdx = (self.height * max_width) + self.width;
     while (idx != currentIdx) : (idx += 1) {
         buffer[idx - 80] = buffer[idx];
         buffer[idx] = empty_char;
@@ -98,7 +98,7 @@ pub fn scroll(self: *Screen) void {
 
 fn putCharAt(self: *Screen, c: u8, y: usize, x: usize) void {
     const char = Char.create(c, self.style);
-    var index = (y * max_width) + x;
+    const index = (y * max_width) + x;
     buffer[index] = char;
 
     self.width += 1;

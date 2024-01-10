@@ -85,7 +85,7 @@ pub fn BitMap(comptime size: ?usize) type {
 test "init" {
     const expect = std.testing.expect;
 
-    var bitmap = try BitMap(1).init(null, null);
+    const bitmap = try BitMap(1).init(null, null);
 
     try expect(bitmap.data[0] == 0);
     try expect(bitmap.data.len == 1);

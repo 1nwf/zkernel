@@ -16,13 +16,13 @@ pub fn init(mem_map: []MemMapEntry, allocator: Allocator) !Self {
     var size: usize = 0;
     for (mem_map) |mem| {
         if (mem.type != .Available) continue;
-        var region = MemRegion.init(@intCast(mem.base_addr), @intCast(mem.len));
+        const region = MemRegion.init(@intCast(mem.base_addr), @intCast(mem.len));
         try free_mem.append(region);
         size += region.size;
     }
 
     const bitmap_entries = std.mem.alignForward(usize, size, PAGE_SIZE * 8) / (PAGE_SIZE * 8);
-    var bitmap = try BitMap(null).init(allocator, bitmap_entries);
+    const bitmap = try BitMap(null).init(allocator, bitmap_entries);
 
     return .{
         .bitmap = bitmap,
@@ -45,7 +45,7 @@ pub fn allocN(self: *Self, n: usize) !usize {
 }
 
 pub fn alloc(self: *Self) !usize {
-    var bit_idx = try self.bitmap.setFirstFree();
+    const bit_idx = try self.bitmap.setFirstFree();
     return self.getAddrFromBit(bit_idx) orelse error.OutOfMemory;
 }
 
@@ -58,7 +58,7 @@ fn getAddrFromBit(self: *Self, bit_idx: usize) ?usize {
     var prev: usize = 0;
     for (self.memory_regions) |region| {
         const pages = region.size / PAGE_SIZE;
-        var bit_end = prev + pages;
+        const bit_end = prev + pages;
         if (bit_idx < bit_end) {
             const curr_idx = bit_idx - prev;
             const addr = region.start + (curr_idx * PAGE_SIZE);
@@ -93,7 +93,7 @@ pub fn deinit(self: *Self) void {
 
 test "alloc" {
     const expect = std.testing.expect;
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
             .size = 24,
@@ -117,7 +117,7 @@ test "alloc" {
 
 test "getBitFromAddr" {
     const expect = std.testing.expect;
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
             .size = 24,
@@ -138,7 +138,7 @@ test "getBitFromAddr" {
 
 test "getAddrFromBit" {
     const expect = std.testing.expect;
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
             .size = 24,
@@ -188,7 +188,7 @@ test "getAddrFromBit" {
 
 test "allocRegions" {
     const expect = std.testing.expect;
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
             .size = 24,

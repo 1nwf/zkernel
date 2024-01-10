@@ -17,7 +17,7 @@ address_space_manager: AddressSpaceManager,
 
 pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: []const MemoryRegion, a: std.mem.Allocator) !Self {
     var adm = AddressSpaceManager.init(a);
-    var region = MemoryRegion.init(pg.PAGE_SIZE, std.mem.alignBackward(usize, std.math.maxInt(usize), pg.PAGE_SIZE) - pg.PAGE_SIZE);
+    const region = MemoryRegion.init(pg.PAGE_SIZE, std.mem.alignBackward(usize, std.math.maxInt(usize), pg.PAGE_SIZE) - pg.PAGE_SIZE);
     try adm.insert(region);
 
     for (reserved) |res| {
@@ -63,7 +63,7 @@ fn resize(_: *anyopaque, _: []u8, _: u8, _: usize, _: usize) bool {
 fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, _: usize) void {
     _ = buf;
     _ = buf_align;
-    var self: *Self = @ptrCast(@alignCast(ctx));
+    const self: *Self = @ptrCast(@alignCast(ctx));
     _ = self;
 }
 

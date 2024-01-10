@@ -121,7 +121,7 @@ pub fn Tree(
         }
 
         pub fn insert(self: *Self, value: T) !void {
-            var head = self.head orelse {
+            const head = self.head orelse {
                 self.head = try self.createNode(value, .black);
                 return;
             };
@@ -142,7 +142,7 @@ pub fn Tree(
         }
 
         fn rotate(self: *Self, node: *NodeType, position: NodeType.Position) void {
-            var new_head = if (position == .right) node.rotateRight() else node.rotateLeft();
+            const new_head = if (position == .right) node.rotateRight() else node.rotateLeft();
             if (node == self.head) {
                 self.head = new_head;
             }
@@ -201,7 +201,7 @@ pub fn Tree(
         }
 
         fn createNode(self: *Self, value: T, color: Color) !*NodeType {
-            var node = try self.allocator.create(NodeType);
+            const node = try self.allocator.create(NodeType);
             node.* = NodeType.init(value, color);
             return node;
         }
@@ -251,10 +251,10 @@ pub fn Tree(
         }
 
         pub fn delete(self: *Self, node: *NodeType) void {
-            var left = node.leftChild();
+            const left = node.leftChild();
             var right = node.rightChild();
             if (left != null and right != null) {
-                var min_child = right.?.minChild();
+                const min_child = right.?.minChild();
                 node.data = min_child.data;
                 self.delete(min_child);
                 return;
@@ -293,8 +293,8 @@ pub fn Tree(
                 var sibling = current.sibling() orelse @panic("node must have a sibling");
                 var sleft = sibling.leftChild();
                 var sright = sibling.rightChild();
-                var rightc = color(sright);
-                var leftc = color(sleft);
+                const rightc = color(sright);
+                const leftc = color(sleft);
                 if (parent.color == .red and sibling.color == .black and leftc == .black and rightc == .black) {
                     sibling.color = .red;
                     parent.color = .black;
@@ -326,7 +326,7 @@ pub fn Tree(
         }
 
         pub fn destroyNode(self: *Self, node: ?*NodeType) void {
-            var root = node orelse return;
+            const root = node orelse return;
             if (root.children[0]) |left| {
                 self.destroyNode(left);
             }
@@ -348,7 +348,7 @@ fn compare(a: usize, b: usize) bool {
 }
 
 test "insertion" {
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     const expectEq = std.testing.expectEqual;
     var tree = Tree(usize, compare).init(allocator);
     defer tree.deinit();
@@ -362,8 +362,8 @@ test "insertion" {
     //  1
 
     var head = tree.head.?;
-    var left = head.leftChild().?;
-    var right = head.rightChild().?;
+    const left = head.leftChild().?;
+    const right = head.rightChild().?;
 
     try expectEq(.{ head.data, head.color }, .{ 2, .black });
     try expectEq(.{ left.data, left.color }, .{ 1, .red });
@@ -371,7 +371,7 @@ test "insertion" {
 }
 
 test "insertion2" {
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     const expectEq = std.testing.expectEqual;
     var tree = Tree(usize, compare).init(allocator);
     defer tree.deinit();
@@ -416,7 +416,7 @@ test "insertion2" {
 }
 
 test "insertion3" {
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     const expectEq = std.testing.expectEqual;
     var tree = Tree(usize, compare).init(allocator);
     defer tree.deinit();
@@ -442,7 +442,7 @@ test "insertion3" {
 }
 
 test "find" {
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     const expectEq = std.testing.expectEqual;
     var tree = Tree(usize, compare).init(allocator);
     defer tree.deinit();
@@ -470,7 +470,7 @@ test "find" {
 }
 
 test "delete" {
-    var allocator = std.testing.allocator;
+    const allocator = std.testing.allocator;
     const expectEq = std.testing.expectEqual;
     var tree = Tree(usize, compare).init(allocator);
     defer tree.deinit();

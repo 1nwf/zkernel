@@ -20,7 +20,7 @@ pub const Node = struct {
             return .{ null, value_ptr };
         }
         const free_space = self.size - size;
-        var next = self.next;
+        const next = self.next;
         const new_node: *Node = @ptrFromInt(self.address() + size);
         new_node.* = Node.init(free_space, null);
         new_node.next = next;
@@ -60,7 +60,7 @@ heap_size: usize,
 head: ?*Node,
 
 pub fn init(heap_start: usize, heap_size: usize) FreeList {
-    var head: *Node = @ptrFromInt(heap_start);
+    const head: *Node = @ptrFromInt(heap_start);
     head.* = Node.init(heap_size, null);
     return FreeList{ .heap_start = heap_start, .heap_size = heap_size, .head = head };
 }
@@ -68,7 +68,7 @@ pub fn init(heap_start: usize, heap_size: usize) FreeList {
 pub fn alloc(self: *FreeList, comptime T: type, value: T) Error!*T {
     var prev: ?*Node = null;
     var node = self.head;
-    var size: usize = @max(Node.NodeSize, @sizeOf(T));
+    const size: usize = @max(Node.NodeSize, @sizeOf(T));
     while (node) |n| {
         if (n.size >= size) {
             break;
@@ -78,7 +78,7 @@ pub fn alloc(self: *FreeList, comptime T: type, value: T) Error!*T {
     }
 
     var node_found = node orelse return Error.OutOfMemory;
-    var split = node_found.take(T);
+    const split = node_found.take(T);
     const next_node = split[0];
     const addr = split[1];
 

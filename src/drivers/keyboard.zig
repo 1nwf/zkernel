@@ -21,7 +21,7 @@ export fn keyboardHandler(ctx: int.Context) void {
         return;
     }
 
-    var letter = key.decode();
+    const letter = key.decode();
 
     write("{u}", .{letter.value});
 }
