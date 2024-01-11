@@ -44,5 +44,5 @@ pm_mode:
 	mov ss, ax
 	mov esp, kernel_stack_end ; TODO: allocate dedicated stack
 	xor ebp, ebp
-	jmp 8:ap_start
+  jmp ap_start
 

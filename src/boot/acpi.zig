@@ -80,7 +80,7 @@ pub const LocalApic = packed struct {
 
 pub fn cpuid() u8 {
     const ebx = asm volatile (
-        \\ mov $1, %%ebx
+        \\ mov $1, %%eax
         \\ cpuid
         : [out] "={ebx}" (-> u32),
     );
@@ -158,6 +158,8 @@ pub const Apic = struct {
     pub fn boot_cpus(self: *Self, cores: u8) void {
         for (1..cores) |core_id| {
             self.send_init_ipi(@intCast(core_id));
+            self.send_deinit_ipi(@intCast(core_id));
+            self.send_startup_ipi(@intCast(core_id));
             self.send_startup_ipi(@intCast(core_id));
         }
     }

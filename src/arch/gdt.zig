@@ -118,8 +118,8 @@ pub fn init() void {
         \\ mov %%ax, %%es
         \\ mov %%ax, %%fs
         \\ 
-        \\ ljmp $0x08, $done
-        \\ done:
+        \\ ljmp $0x08, $1f
+        \\ 1:
     );
 }
 

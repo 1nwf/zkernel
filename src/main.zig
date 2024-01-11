@@ -89,7 +89,9 @@ fn runUserspaceProgram(launcher: *ProcessLauncher) void {
     launcher.runProgram(&file) catch unreachable;
 }
 
-export fn ap_start() void {
+export fn ap_start() noreturn {
+    gdt.init();
+    int.init();
     log.info("cpu {} booted", .{acpi.cpuid()});
     arch.halt();
 }
