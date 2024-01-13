@@ -4,6 +4,10 @@ const ip = @import("protocols/ip.zig");
 const eth_frame = @import("ethernet_frame.zig");
 const utils = @import("utils.zig");
 
+const dhcp = @import("protocols/dhcp.zig");
+
+const socket = @import("socket.zig");
+
 ptr: *anyopaque,
 mac_address: [6]u8,
 vtable: *const VTable,
@@ -14,41 +18,38 @@ pub const VTable = struct {
     receive_packet: *const fn (ctx: *anyopaque) ?[]u8,
 };
 
-pub fn transmit_packet(self: *Self, value: []const u8) anyerror!void {
-    // const bytes = utils.swapFields(value);
-    // log.info("{any}", .{std.fmt.fmtSliceHexLower(&bytes)});
-    const bytes = value;
-    return self.vtable.transmit_packet(self.ptr, @intFromPtr(bytes.ptr), bytes.len);
+var nic: Self = undefined;
+
+pub fn transmit_packet(bytes: []const u8) anyerror!void {
+    return nic.vtable.transmit_packet(nic.ptr, @intFromPtr(bytes.ptr), bytes.len);
 }
 
-pub fn receive_packet(self: *Self) ?[]u8 {
-    return self.vtable.receive_packet(self.ptr);
+pub fn receive_packet() ?[]u8 {
+    return nic.vtable.receive_packet(nic.ptr);
 }
 
 pub fn send_arp(self: *Self, packet: anytype, dest_mac_addr: [6]u8) !?[]u8 {
     const frame = eth_frame.Frame(@TypeOf(packet)).init(dest_mac_addr, self.mac_address, .Arp, packet);
-    // const bytes = utils.structToBigEndian(frame);
-    try self.transmit_packet(frame);
+    const bytes = utils.structToBigEndian(frame);
+    try self.transmit_packet(&bytes);
     return self.receive_packet();
 }
 
-pub fn make_udp_packet(self: *Self, comptime T: type, datagram: udp.Datagram(T), src_ip: [4]u8, dest_ip: [4]u8) [329]u8 {
-    const total_length: u16 = (@bitSizeOf(ip.Header) / 8) + (@bitSizeOf(@TypeOf(datagram)) / 8);
-    var ip_header = ip.Header{
-        .total_length = total_length,
-        .tos = 0xC0,
-        .ident = 0,
-        .flags_and_fragment_offset = 0,
-        .ttl = 64,
-        .next_level_protocol = .Udp,
-        .checksum = 0,
-        .source_ip = src_ip,
-        .dest_ip = dest_ip,
-    };
-    ip_header.calcChecksum();
+pub fn init(ptr: *anyopaque, vtable: *const VTable, mac_address: [6]u8) *Self {
+    nic = .{ .ptr = ptr, .vtable = vtable, .mac_address = mac_address };
+    return &nic;
+}
 
-    const target_mac = [_]u8{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-    const ip_packet = ip.IpPacket(@TypeOf(datagram)).init(ip_header, datagram);
-    const frame = eth_frame.Frame(@TypeOf(ip_packet)).init(target_mac, self.mac_address, .Ipv4, ip_packet);
-    return utils.swapFields(frame);
+// get ip, dns, and router gateway through dhcp
+pub fn dhcp_init(self: *Self, allocator: std.mem.Allocator) void {
+    var s = socket.init(allocator, .{
+        .src_port = 68,
+        .dest_port = 67,
+        .dest_mac = .{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+        .src_mac = self.mac_address,
+        .protocol = .Udp,
+    });
+
+    s.send(dhcp.discoverPacket(self.mac_address)) catch {};
+    _ = s.recv();
 }

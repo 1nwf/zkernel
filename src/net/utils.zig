@@ -93,6 +93,7 @@ fn byteSwapStruct(comptime T: type, value: *T) !void {
                     @field(value, f.name)[idx] = @byteSwap(@field(value, f.name)[idx]);
                 }
             },
+            .Void => {},
             else => @compileError("invalid field in struct " ++ @typeName(f.type)),
         }
     }

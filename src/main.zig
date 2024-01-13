@@ -79,10 +79,8 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
 
     const pci_devices = try pci.init(allocator);
     const nic_pci_dev = pci_devices.find(0x10ec, 0x8139) orelse @panic("nic not found");
-    var nic = (try rtl8139.init(nic_pci_dev)).nic();
-    // try send_test_arp_packet(&nic);
-    // try send_test_udp_packet(&nic);
-    _ = nic;
+    var nic = (try rtl8139.init(nic_pci_dev)).setNic();
+    nic.dhcp_init(allocator);
 }
 
 fn print_res(data: anytype) void {

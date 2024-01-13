@@ -11,7 +11,7 @@ const TX_BUFFER_SIZE = 1792;
 const ROK: u16 = 0b1; // Receive Ok
 const TOK: u32 = 0b100; // Transmit Ok
 
-var rx_buffer: [RX_BUFFER_SIZE]u8 = .{0} ** RX_BUFFER_SIZE;
+pub var rx_buffer: [RX_BUFFER_SIZE]u8 = .{0} ** RX_BUFFER_SIZE;
 var tx_buffer: [4][TX_BUFFER_SIZE]u8 = .{.{0} ** TX_BUFFER_SIZE} ** 4;
 
 const Self = @This();
@@ -138,15 +138,15 @@ fn transmit(ctx: *anyopaque, addr: u32, len: u32) anyerror!void {
     return self.transmit_packet(addr, len);
 }
 
-pub fn nic(self: *Self) Nic {
-    return .{
-        .ptr = self,
-        .vtable = &.{
+pub fn setNic(self: *Self) *Nic {
+    return Nic.init(
+        self,
+        &.{
             .receive_packet = receive,
             .transmit_packet = transmit,
         },
-        .mac_address = self.mac_address,
-    };
+        self.mac_address,
+    );
 }
 
 fn print_mac_addr(self: *Self) void {
@@ -164,14 +164,6 @@ fn print_mac_addr(self: *Self) void {
 }
 
 fn read_mac_addr(self: *const Self) [6]u8 {
-    // var mac: u48 = 0;
-    // for (self.registers.mac, 0..) |m, idx| {
-    //     const offset = 40 - (idx * 8);
-    //     const val = @as(u48, m.read()) << @intCast(offset);
-    //     mac |= val;
-    // }
-    // return mac;
-
     var mac: [6]u8 = undefined;
     for (self.registers.mac, 0..) |m, idx| {
         mac[idx] = m.read();
@@ -189,4 +181,8 @@ export fn interrupt_handler(ctx: interrupt.Context) void {
         log.info("(int) received packet", .{});
     }
     _ = ctx;
+}
+
+fn read_packet(self: *Self) void {
+    _ = self;
 }

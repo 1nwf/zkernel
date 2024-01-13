@@ -83,13 +83,11 @@ fn ParameterRequestList(comptime params: u8) type {
     };
 }
 
-const size = 46;
-
-pub fn discoverPacket(mac_addr: [6]u8) Packet(size) {
+pub fn discoverPacket(mac_addr: [6]u8) Packet(25) {
     const header = Header{
         .op = .Request,
         .hops = 0,
-        .xid = 0x3364fcaf,
+        .xid = 0,
         .secs = 1,
         .flags = 0x0000,
         .ciaddr = std.mem.zeroes([4]u8),
@@ -99,34 +97,16 @@ pub fn discoverPacket(mac_addr: [6]u8) Packet(size) {
         .chaddr = mac_addr,
     };
 
-    // const client_id = ClientId{
-    //     .length = 7,
-    //     .hw_type = 1,
-    //     .addr = mac_addr,
-    // };
-
-    const host_name = HostName{};
-
     const params = ParameterRequestList(9){
         .options = [_]u8{ 1, 3, 6, 12, 15, 33, 42, 120, 121 },
     };
 
-    const bytes2 = [_]u8{
-        0x3d, 0x13, 0xff,
-        0xf1, 0xf5, 0xdd,
-        0x7f, 0x00, 0x02,
-        0x00, 0x00, 0xab,
-        0x11, 0x4d, 0x61,
-        0xbe, 0x2d, 0x76,
-        0x0c, 0x84, 0x66,
-    };
-
-    return Packet(size){
+    return .{
         .header = header,
         .options = std.mem.toBytes(Options{
             .option_type = .MessageType,
             .length = 1,
             .data = 1,
-        }) ++ bytes2 ++ std.mem.toBytes(params) ++ std.mem.toBytes(MaxSize{}) ++ std.mem.toBytes(host_name),
+        }) ++ std.mem.toBytes(params) ++ std.mem.toBytes(MaxSize{}) ++ std.mem.toBytes(HostName{}),
     };
 }

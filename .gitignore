@@ -5,3 +5,4 @@ zig-cache/
 .DS_Store
 iso/boot/kernel.elf
 iso/os.iso
+dump.pcat
