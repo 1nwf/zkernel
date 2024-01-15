@@ -22,7 +22,6 @@ pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: [
 
     for (reserved) |res| {
         page_directory.mapRegions(res.start, res.start, res.size);
-        try pmm.allocRegion(res.start, res.size);
     }
 
     page_directory.load();

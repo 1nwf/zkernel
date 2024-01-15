@@ -16,6 +16,7 @@ const debug = @import("debug/debug.zig");
 
 const mem = @import("mem/mem.zig");
 const ProcessLauncher = @import("process/launcher.zig");
+const process_scheduler = @import("process/scheduler.zig");
 
 export fn kmain(boot_info: *multiboot.BootInfo) noreturn {
     log.info("boot info: 0x{x}", .{@intFromPtr(boot_info)});
@@ -65,7 +66,7 @@ fn main(boot_info: *multiboot.BootInfo) !void {
         mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
     };
 
-    var pmm = try mem.pmm.init(mem_map.entries(), allocator);
+    var pmm = try mem.pmm.init(mem_map.entries(), allocator, &reserved_mem_regions);
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 

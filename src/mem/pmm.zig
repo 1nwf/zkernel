@@ -11,7 +11,7 @@ bitmap: BitMap(null),
 memory_regions: []MemRegion,
 allocator: Allocator,
 
-pub fn init(mem_map: []MemMapEntry, allocator: Allocator) !Self {
+pub fn init(mem_map: []MemMapEntry, allocator: Allocator, reserved_regions: []const MemRegion) !Self {
     var free_mem = std.ArrayList(MemRegion).init(allocator);
     var size: usize = 0;
     for (mem_map) |mem| {
@@ -24,11 +24,17 @@ pub fn init(mem_map: []MemMapEntry, allocator: Allocator) !Self {
     const bitmap_entries = std.mem.alignForward(usize, size, PAGE_SIZE * 8) / (PAGE_SIZE * 8);
     var bitmap = try BitMap(null).init(allocator, bitmap_entries);
 
-    return .{
+    var pmm: Self = .{
         .bitmap = bitmap,
         .memory_regions = try free_mem.toOwnedSlice(),
         .allocator = allocator,
     };
+
+    for (reserved_regions) |res| {
+        try pmm.allocRegion(res.start, res.size);
+    }
+
+    return pmm;
 }
 
 pub fn allocRegion(self: *Self, addr: usize, size: usize) !void {
