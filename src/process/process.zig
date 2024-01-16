@@ -44,17 +44,17 @@ pub fn mapPages(
     }
 }
 
-pub fn new_thread(self: *Process, context: Context) !Thread {
-    const phys_start = try self.phys_frame_allocator.alloc();
+pub fn new_thread(self: *Process, entrypoint: usize) !Thread {
+    const stack_phys_start = try self.phys_frame_allocator.alloc();
     const stack_start = 0;
     const stack_end = stack_start + arch.paging.PAGE_SIZE;
-    self.page_dir.mapUserPage(stack_start, phys_start);
+    self.page_dir.mapUserPage(stack_start, stack_phys_start);
     return .{
         .tid = COUNTER.next(),
         .process = self,
         .stack_end = stack_end,
         .stack_size = THREAD_STACK_SIZE,
-        .context = context,
+        .context = Context.init_user_context(entrypoint, stack_end),
     };
 }
 

@@ -60,11 +60,7 @@ pub fn runProgram(self: *Self, bin: []u8) !void {
         }
     }
 
-    const user_stack = try self.phys_frame_allocator.alloc();
-    process.page_dir.mapUserRegions(user_stack, 0, paging.PAGE_SIZE);
-
-    const context = arch.thread.Context.init_user_context(@intCast(header.entry), paging.PAGE_SIZE);
-    const thread = try process.new_thread(context);
+    const thread = try process.new_thread(@intCast(header.entry));
     try process_scheduler.schedule_thread(thread);
 }
 
