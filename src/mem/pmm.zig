@@ -102,14 +102,13 @@ test "alloc" {
     var allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
-            .size = 24,
             .base_addr = 0,
-            .length = PAGE_SIZE * 20,
+            .len = PAGE_SIZE * 20,
             .type = .Available,
         },
     };
 
-    var pmm = try init(&mem_map, allocator);
+    var pmm = try init(&mem_map, allocator, &.{});
     defer pmm.deinit();
 
     var i: usize = 0;
@@ -126,14 +125,13 @@ test "getBitFromAddr" {
     var allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
-            .size = 24,
             .base_addr = 0,
-            .length = PAGE_SIZE * 20,
+            .len = PAGE_SIZE * 20,
             .type = .Available,
         },
     };
 
-    var pmm = try init(&mem_map, allocator);
+    var pmm = try init(&mem_map, allocator, &.{});
     defer pmm.deinit();
 
     var i: usize = 0;
@@ -147,21 +145,18 @@ test "getAddrFromBit" {
     var allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
-            .size = 24,
             .base_addr = 0,
-            .length = PAGE_SIZE * 20,
+            .len = PAGE_SIZE * 20,
             .type = .Available,
         },
         .{
-            .size = 24,
             .base_addr = PAGE_SIZE * 24,
-            .length = PAGE_SIZE * 4,
+            .len = PAGE_SIZE * 4,
             .type = .Available,
         },
         .{
-            .size = 24,
             .base_addr = PAGE_SIZE * 28,
-            .length = PAGE_SIZE * 4,
+            .len = PAGE_SIZE * 4,
             .type = .Available,
         },
     };
@@ -179,7 +174,7 @@ test "getAddrFromBit" {
         }
         break :blk addrs;
     };
-    var pmm = try init(&mem_map, allocator);
+    var pmm = try init(&mem_map, allocator, &.{});
 
     defer pmm.deinit();
 
@@ -197,14 +192,13 @@ test "allocRegions" {
     var allocator = std.testing.allocator;
     var mem_map = [_]MemMapEntry{
         .{
-            .size = 24,
             .base_addr = 0,
-            .length = PAGE_SIZE * 20,
+            .len = PAGE_SIZE * 20,
             .type = .Available,
         },
     };
 
-    var pmm = try init(&mem_map, allocator);
+    var pmm = try init(&mem_map, allocator, &.{});
     defer pmm.deinit();
 
     var i: usize = 4;
