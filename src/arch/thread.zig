@@ -1,28 +1,55 @@
 const gdt = @import("gdt.zig");
 
-pub fn enter_userspace(ip: u32, stack: u32) noreturn {
+pub export fn launch_thread(ctx: *const Context) noreturn {
     asm volatile (
         \\ cli
-        \\ mov %[user_data], %%dx
-        \\ mov %%dx, %%ds
-        \\ mov %%dx, %%gs
-        \\ mov %%dx, %%es
-        \\ mov %%dx, %%fs 
+        \\ mov %[context], %%esp
         \\
-        \\ push %[user_data]
-        \\ push %[stack]
-        \\ pushf
+        \\ pop %%edi
+        \\ pop %%esi
+        \\ pop %%ebp
+        \\ pop %%ebx
+        \\ pop %%edx
+        \\ pop %%ecx
+        \\ pop %%eax
         \\
-        \\ push %[user_code]
-        \\ push %[ip]
         \\ iret
         :
-        : [user_code] "i" (gdt.user_code_offset | 3),
-          [user_data] "i" (gdt.user_data_offset | 3),
-          [stack] "r" (stack),
-          [ip] "r" (ip),
-        : "edx"
+        : [context] "{edx}" (@intFromPtr(ctx)),
     );
 
     unreachable;
 }
+
+pub const Context = extern struct {
+    edi: u32,
+    esi: u32,
+    ebp: u32,
+    ebx: u32,
+    edx: u32,
+    ecx: u32,
+    eax: u32,
+    // cpu pushed values
+    eip: u32, // instruction pointer
+    cs: u32, // code segment
+    eflags: u32, // cpu flags
+    esp: u32, // stack pointer of interrupt code
+    ss: u32, // stack segment
+
+    pub fn init_user_context(eip: u32, esp: u32) Context {
+        return .{
+            .edi = 0,
+            .esi = 0,
+            .ebp = 0,
+            .ebx = 0,
+            .edx = 0,
+            .ecx = 0,
+            .eax = 0,
+            .eip = eip,
+            .cs = gdt.user_code_offset | 3,
+            .eflags = 0x200, // set interrupt enable bit
+            .esp = esp,
+            .ss = gdt.user_data_offset | 3,
+        };
+    }
+};

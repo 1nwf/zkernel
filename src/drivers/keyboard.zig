@@ -1,29 +1,31 @@
 const int = @import("../interrupts/interrupts.zig");
 const in = @import("arch").io.in;
 const write = @import("vga.zig").write;
+const arch = @import("arch");
+const idt = @import("../interrupts/idt.zig");
+const pic = @import("../interrupts/pic.zig");
 
 const unicode = @import("std").unicode;
 const sendEoi = @import("../interrupts/pic.zig").sendEoi;
+
+const keyboard_interrupt_handler = arch.interrupt_handler(keyboardHandler);
 pub fn init_keyboard() void {
-    int.setIrqHandler(1, keyboardHandler);
+    idt.setHandler(33, @intFromPtr(&keyboard_interrupt_handler), 0);
 }
 
 var modifiers = Modifiers.init();
-export fn keyboardHandler(ctx: int.Context) void {
+export fn keyboardHandler(ctx: arch.thread.Context) usize {
     _ = ctx;
     const scancode = in(0x60, u8);
     const key = Key.init(scancode);
     if (Modifiers.is_modifier(key)) {
         modifiers.update(key);
-        return;
+    } else if (!key.release) {
+        var letter = key.decode();
+        write("{u}", .{letter.value});
     }
-    if (key.release) {
-        return;
-    }
-
-    var letter = key.decode();
-
-    write("{u}", .{letter.value});
+    sendEoi(1);
+    return 0;
 }
 
 // ported from https://crates.io/crates/pc-keyboard Us104Key keyboard layout

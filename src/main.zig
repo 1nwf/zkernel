@@ -70,6 +70,8 @@ fn main(boot_info: *multiboot.BootInfo) !void {
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
+    try process_scheduler.init(allocator);
+
     var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
     runUserspaceProgram(process_launcher);
 }

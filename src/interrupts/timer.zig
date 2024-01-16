@@ -1,9 +1,17 @@
 const int = @import("interrupts.zig");
+const idt = @import("idt.zig");
 const io = @import("arch").io;
-const write = @import("../drivers/vga.zig").write;
+const arch = @import("arch");
+const pic = @import("pic.zig");
+
+const log = @import("std").log;
+
+const process_scheduler = @import("../process/scheduler.zig");
+const timer_interrupt_handler = arch.interrupt_handler(timer_handler);
 
 pub fn init_timer(freq: u32) void {
-    int.setIrqHandler(0, timer_handler);
+    idt.setHandler(32, @intFromPtr(&timer_interrupt_handler), 0);
+
     const divisor: u16 = @truncate(1193180 / freq);
     const low: u8 = @truncate(divisor / 0xFF);
     const high: u8 = @truncate((divisor >> 8) & 0xFF);
@@ -17,9 +25,14 @@ pub fn init_timer(freq: u32) void {
 var ticks: u32 = 0;
 var interval: u32 = 0;
 
-pub export fn timer_handler(ctx: int.Context) void {
-    _ = ctx;
-    // ticks += 1;
+pub export fn timer_handler(_: arch.thread.Context) usize {
+    ticks += 1;
+    const ctx = process_scheduler.run_next() orelse {
+        pic.sendEoi(0);
+        return 0;
+    };
+    pic.sendEoi(0);
+    return @intFromPtr(ctx);
 }
 
 pub fn read_count() u16 {
@@ -38,7 +51,7 @@ pub fn read_count() u16 {
 pub export fn wait(secs: u32) void {
     var target = ticks + (secs * interval);
     while (ticks < target) {
-        asm volatile ("nop");
+        asm volatile ("hlt");
     }
 
     return;

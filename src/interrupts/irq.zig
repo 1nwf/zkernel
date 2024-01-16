@@ -4,7 +4,6 @@ const int = @import("interrupts.zig");
 const Context = @import("interrupts.zig").Context;
 const sendEoi = @import("pic.zig").sendEoi;
 
-// TODO: queue interrupts instead of handling them immediately
 export fn irq_handler(ctx: Context) void {
     const handler = int.interrupt_handlers[ctx.err_code];
     handler(ctx);
@@ -26,78 +25,22 @@ export fn irq_common() callconv(.Naked) void {
     );
 }
 
-pub fn irq(comptime num: usize) void {
-    asm volatile (
-        \\ cli
-        \\ push %[n1] 
-        \\ push %[n2]
-        \\ jmp irq_common
-        :
-        : [n1] "i" (num + 32),
-          [n2] "i" (num),
-    );
-}
-
-pub export fn irq0() void {
-    irq(0);
-}
-
-pub export fn irq1() void {
-    irq(1);
-}
-
-pub export fn irq2() void {
-    irq(2);
-}
-
-pub export fn irq3() void {
-    irq(3);
-}
-
-pub export fn irq4() void {
-    irq(4);
-}
-
-pub export fn irq5() void {
-    irq(5);
-}
-
-pub export fn irq6() void {
-    irq(6);
-}
-
-pub export fn irq7() void {
-    irq(7);
-}
-
-pub export fn irq8() void {
-    irq(8);
-}
-
-pub export fn irq9() void {
-    irq(9);
-}
-
-pub export fn irq10() void {
-    irq(10);
-}
-
-pub export fn irq11() void {
-    irq(11);
-}
-
-pub export fn irq12() void {
-    irq(12);
-}
-
-pub export fn irq13() void {
-    irq(13);
-}
-
-pub export fn irq14() void {
-    irq(14);
-}
-
-pub export fn irq15() void {
-    irq(15);
-}
+pub const irq_handlers = blk: {
+    var handlers: [16]*const fn () callconv(.C) void = [_]*const fn () callconv(.C) void{undefined} ** 16;
+    for (0..handlers.len) |idx| {
+        handlers[idx] = struct {
+            fn handler() callconv(.C) void {
+                asm volatile (
+                    \\ cli
+                    \\ push %[n1] 
+                    \\ push %[n2]
+                    \\ jmp irq_common
+                    :
+                    : [n1] "i" (idx + 32),
+                      [n2] "i" (idx),
+                );
+            }
+        }.handler;
+    }
+    break :blk handlers;
+};
