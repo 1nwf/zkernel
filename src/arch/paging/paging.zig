@@ -191,11 +191,12 @@ pub const PageDirectory = extern struct {
         }
     }
 
-    pub fn unmapPage(self: *Self, addr: usize) void {
-        var page_table = self.getDirPageTable(addr) orelse return;
+    pub fn unmapPage(self: *Self, addr: usize) ?usize {
+        var page_table = self.getDirPageTable(addr) orelse return null;
         var table_entry = page_table.findEntry(addr);
-        if (table_entry.present == 0) return;
-        table_entry.present = 0;
+        if (!table_entry.present) return null;
+        table_entry.present = false;
+        return @as(usize, table_entry.address << 12);
     }
 
     pub fn load(self: *Self) void {

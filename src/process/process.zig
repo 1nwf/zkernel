@@ -20,6 +20,7 @@ var COUNTER: struct {
 const Process = @This();
 page_dir: paging.PageDirectory align(paging.PAGE_SIZE),
 phys_frame_allocator: *PhysFrameAllocator,
+thread_count: usize = 0,
 
 pub fn init(phys_frame_allocator: *PhysFrameAllocator) Process {
     return .{
@@ -49,6 +50,7 @@ pub fn new_thread(self: *Process, entrypoint: usize) !Thread {
     const stack_start = 0;
     const stack_end = stack_start + arch.paging.PAGE_SIZE;
     self.page_dir.mapUserPage(stack_start, stack_phys_start);
+    self.thread_count += 1;
     return .{
         .tid = COUNTER.next(),
         .process = self,
@@ -64,4 +66,14 @@ pub const Thread = struct {
     stack_end: usize,
     stack_size: usize,
     context: Context,
+
+    pub fn deinit(self: *Thread, cb: *const fn (usize) void) void {
+        self.process.thread_count -= 1;
+        if (self.process.thread_count == 0) {
+            self.process.deinit(cb);
+        } else {
+            const phys_frame = self.process.page_dir.unmapPage(self.stack_end - self.stack_size) orelse @panic("thread stack not mapped");
+            self.process.phys_frame_allocator.free(phys_frame);
+        }
+    }
 };

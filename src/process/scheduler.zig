@@ -30,8 +30,8 @@ pub fn run_next() ?*arch.thread.Context {
 }
 
 pub fn exit_active_thread(cb: *const fn (usize) void) void {
-    if (self.active_thread) |th| {
-        th.process.deinit(cb);
+    if (self.active_thread) |*th| {
+        th.deinit(cb);
     }
     self.active_thread = null;
 }
