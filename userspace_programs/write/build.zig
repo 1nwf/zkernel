@@ -35,8 +35,15 @@ pub fn build(b: *std.Build) void {
     const stdlib = b.addModule("stdlib", .{
         .source_file = .{ .path = "../../stdlib/stdlib.zig" },
     });
-
     exe.addModule("stdlib", stdlib);
+
+    const start = b.addObject(.{
+        .name = "start",
+        .root_source_file = .{ .path = "../../stdlib/start.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.addObject(start);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

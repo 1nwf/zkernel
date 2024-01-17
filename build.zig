@@ -232,6 +232,13 @@ pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
         .source_file = .{ .path = "stdlib/stdlib.zig" },
     });
 
+    const start = b.addObject(.{
+        .name = "start",
+        .root_source_file = .{ .path = "stdlib/start.zig" },
+        .target = target,
+        .optimize = .ReleaseSafe,
+    });
+
     for (programs) |p| {
         const source_file = b.fmt("userspace_programs/{s}/src/main.zig", .{p});
         const exe = b.addExecutable(.{
@@ -242,6 +249,7 @@ pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
             .linkage = .static,
         });
         exe.addModule("stdlib", stdlib);
+        exe.addObject(start);
         std.Build.installArtifact(b, exe);
         kernel_exe.step.dependOn(&exe.step);
         kernel_exe.addAnonymousModule(b.fmt("userspace_programs/{s}.elf", .{p}), .{ .source_file = .{

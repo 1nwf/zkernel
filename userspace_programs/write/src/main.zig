@@ -1,8 +1,7 @@
 const std = @import("std");
 const stdlib = @import("stdlib");
 
-pub export fn _start() void {
+export fn main() void {
     stdlib.println("hello", .{});
     stdlib.println("this is a program running in userspace!", .{});
-    stdlib.exit();
 }
