@@ -1,12 +1,14 @@
 const std = @import("std");
+const arch = @import("arch");
 const writefn = @import("../drivers/vga.zig").write;
 const log = std.log;
 
 const exit = @import("exit.zig").exit;
 
 pub const Syscall = enum(u32) {
-    Write = 0,
+    Print = 0,
     Exit,
+    Read,
     fn fromInt(val: u32) ?@This() {
         return switch (val) {
             0...1 => @enumFromInt(val),
@@ -15,13 +17,16 @@ pub const Syscall = enum(u32) {
     }
 };
 
+pub const syscall_int_handler = arch.interrupt_handler(syscall_handler);
+
 // %eax -> system call number
 // %ebx -> arg 1
 // %ecx -> arg 2
 // %edx -> arg 3
 // %esi -> arg 4
 // %edi -> arg 5
-pub noinline fn syscall_handler() void {
+export fn syscall_handler(ctx: arch.thread.Context) usize {
+    _ = ctx;
     var num: u32 = undefined;
     var arg1: u32 = undefined;
     var arg2: u32 = undefined;
@@ -37,12 +42,15 @@ pub noinline fn syscall_handler() void {
           [arg5] "={edi}" (arg5),
     );
 
-    const syscall_num = Syscall.fromInt(num) orelse return;
+    const syscall_num = Syscall.fromInt(num) orelse return 0;
     switch (syscall_num) {
-        .Write => {
+        .Print => {
             const fmt: *[]const u8 = @ptrFromInt(arg1);
             writefn("{s}", .{fmt.*});
         },
         .Exit => exit(),
+        .Read => {},
     }
+
+    return 0;
 }

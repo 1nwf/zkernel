@@ -73,10 +73,13 @@ fn main(boot_info: *multiboot.BootInfo) !void {
     try process_scheduler.init(allocator);
 
     var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
-    runUserspaceProgram(process_launcher);
+    runUserspaceProgram(process_launcher, allocator);
 }
 
-fn runUserspaceProgram(launcher: *ProcessLauncher) void {
+fn runUserspaceProgram(
+    launcher: *ProcessLauncher,
+    allocator: std.mem.Allocator,
+) void {
     var file = @embedFile("userspace_programs/write.elf").*;
-    launcher.runProgram(&file) catch unreachable;
+    launcher.runProgram(allocator, &file) catch unreachable;
 }

@@ -6,7 +6,7 @@ const isr = @import("isr.zig");
 const irq = @import("irq.zig");
 const arch = @import("arch");
 const log = @import("std").log.scoped(.int);
-const syscalls = @import("syscall.zig");
+const syscalls = @import("../syscalls/syscalls.zig");
 
 const page_fault_interrupt_handler = @import("page_fault.zig").page_fault_interrupt_handler;
 const default_interrupt_handler = arch.interrupt_handler(default_handler);
@@ -21,7 +21,7 @@ pub fn init() void {
 
     keyboard.init_keyboard();
     timer.init_timer(20);
-    idt.setHandler(@as(u8, 48), @intFromPtr(&syscalls.int_handler), 3);
+    idt.setHandler(@as(u8, 48), @intFromPtr(&syscalls.syscall_int_handler), 3);
     idt.setHandler(14, @intFromPtr(&page_fault_interrupt_handler), 0);
 
     idt.descriptor = idt.IDTDescr.init(@sizeOf(idt.IDT) - 1, @intFromPtr(&idt.idt));
@@ -42,7 +42,7 @@ pub fn initExceptions() void {
         idt.setHandler(@as(u8, @truncate(i)), @intFromPtr(handler), 0);
     }
 
-    idt.setHandler(@as(u8, 48), @intFromPtr(&syscalls.int_handler), 3);
+    idt.setHandler(@as(u8, 48), @intFromPtr(&syscalls.syscall_int_handler), 3);
 }
 
 pub fn initInterrupts() void {

@@ -30,8 +30,8 @@ pub fn init(
     return &launcher;
 }
 
-pub fn runProgram(self: *Self, bin: []u8) !void {
-    var process = Process.init(self.phys_frame_allocator);
+pub fn runProgram(self: *Self, allocator: std.mem.Allocator, bin: []u8) !void {
+    var process = Process.init(self.phys_frame_allocator, allocator);
     for (self.kernel_regions) |region| {
         process.page_dir.mapRegions(region.start, region.start, region.size);
     }

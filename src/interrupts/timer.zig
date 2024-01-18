@@ -25,14 +25,15 @@ pub fn init_timer(freq: u32) void {
 var ticks: u32 = 0;
 var interval: u32 = 0;
 
-pub export fn timer_handler(_: arch.thread.Context) usize {
+pub export fn timer_handler(ctx: arch.thread.Context) usize {
     ticks += 1;
-    const ctx = process_scheduler.run_next() orelse {
-        pic.sendEoi(0);
-        return 0;
-    };
+    var next_ctx: usize = 0;
+    if (process_scheduler.run_next(ctx)) |c| {
+        next_ctx = @intFromPtr(c);
+    }
+
     pic.sendEoi(0);
-    return @intFromPtr(ctx);
+    return next_ctx;
 }
 
 pub fn read_count() u16 {
