@@ -21,12 +21,14 @@ pub fn schedule_thread(thread: *Thread) !void {
 }
 
 pub fn run_next(ctx: arch.thread.Context) ?*arch.thread.Context {
+    if (self.run_queue.isEmpty()) return null;
     if (self.active_thread) |th| {
         th.context = ctx;
         schedule_thread(th) catch {};
     }
     const next = self.run_queue.popFront() orelse return null;
     self.active_thread = next;
+    next.process.page_dir.load();
     return &self.active_thread.?.context;
 }
 

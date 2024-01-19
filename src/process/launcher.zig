@@ -31,7 +31,7 @@ pub fn init(
 }
 
 pub fn runProgram(self: *Self, allocator: std.mem.Allocator, bin: []u8) !void {
-    var process = Process.init(self.phys_frame_allocator, allocator);
+    var process = try Process.init(self.phys_frame_allocator, allocator);
     for (self.kernel_regions) |region| {
         process.page_dir.mapRegions(region.start, region.start, region.size);
     }
@@ -60,6 +60,7 @@ pub fn runProgram(self: *Self, allocator: std.mem.Allocator, bin: []u8) !void {
         }
     }
 
+    self.kernel_page_dir.load();
     const thread = try process.new_thread(@intCast(header.entry));
     try process_scheduler.schedule_thread(thread);
 }

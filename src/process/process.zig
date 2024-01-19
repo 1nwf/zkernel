@@ -23,16 +23,19 @@ phys_frame_allocator: *PhysFrameAllocator,
 thread_count: usize = 0,
 allocator: std.mem.Allocator,
 
-pub fn init(phys_frame_allocator: *PhysFrameAllocator, allocator: std.mem.Allocator) Process {
-    return .{
+pub fn init(phys_frame_allocator: *PhysFrameAllocator, allocator: std.mem.Allocator) !*Process {
+    var p = try allocator.create(Process);
+    p.* = .{
         .page_dir = paging.PageDirectory.init(),
         .phys_frame_allocator = phys_frame_allocator,
         .allocator = allocator,
     };
+    return p;
 }
 
 pub fn deinit(self: *Process, cb: *const fn (usize) void) void {
     self.page_dir.deinit(cb);
+    self.allocator.destroy(self);
 }
 
 pub fn deinit_thread(self: *Process, thread: *Thread, cb: *const fn (usize) void) void {
