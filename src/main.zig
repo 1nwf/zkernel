@@ -16,6 +16,7 @@ const debug = @import("debug/debug.zig");
 
 const mem = @import("mem/mem.zig");
 const ProcessLauncher = @import("process/launcher.zig");
+const process_scheduler = @import("process/scheduler.zig");
 
 export fn kmain(boot_info: *multiboot.BootInfo) noreturn {
     log.info("boot info: 0x{x}", .{@intFromPtr(boot_info)});
@@ -65,15 +66,19 @@ fn main(boot_info: *multiboot.BootInfo) !void {
         mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
     };
 
-    var pmm = try mem.pmm.init(mem_map.entries(), allocator);
+    var pmm = try mem.pmm.init(mem_map.entries(), allocator, &reserved_mem_regions);
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
+    try process_scheduler.init(allocator);
+
     var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
-    runUserspaceProgram(process_launcher);
+    runUserspaceProgram(process_launcher, allocator);
 }
 
-fn runUserspaceProgram(launcher: *ProcessLauncher) void {
-    var file = @embedFile("userspace_programs/write.elf").*;
-    launcher.runProgram(&file) catch unreachable;
+fn runUserspaceProgram(launcher: *ProcessLauncher, allocator: std.mem.Allocator) void {
+    var file1 = @embedFile("userspace_programs/write.elf").*;
+    var file2 = @embedFile("userspace_programs/yeild.elf").*;
+    launcher.runProgram(allocator, &file1) catch unreachable;
+    launcher.runProgram(allocator, &file2) catch unreachable;
 }

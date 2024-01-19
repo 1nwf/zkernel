@@ -6,9 +6,9 @@ const elf = std.elf;
 const io = std.io;
 const arch = @import("arch");
 const paging = arch.paging;
-const thread = arch.thread;
 const Process = @import("process.zig");
 
+const process_scheduler = @import("scheduler.zig");
 const Self = @This();
 
 pub var launcher: Self = undefined;
@@ -16,7 +16,6 @@ pub var launcher: Self = undefined;
 phys_frame_allocator: *PhysFrameAllocator,
 kernel_page_dir: *paging.PageDirectory,
 kernel_regions: []const mem.MemoryRegion,
-active_process: ?*Process = null,
 
 pub fn init(
     phys_frame_allocator: *PhysFrameAllocator,
@@ -31,12 +30,13 @@ pub fn init(
     return &launcher;
 }
 
-pub fn runProgram(self: *Self, bin: []u8) !void {
-    var process = Process.init();
+pub fn runProgram(self: *Self, allocator: std.mem.Allocator, bin: []u8) !void {
+    var process = try Process.init(self.phys_frame_allocator, allocator);
     for (self.kernel_regions) |region| {
         process.page_dir.mapRegions(region.start, region.start, region.size);
     }
     process.page_dir.load();
+    defer self.kernel_page_dir.load();
 
     var stream = io.fixedBufferStream(bin);
     const header = elf.Header.read(&stream) catch @panic("");
@@ -55,24 +55,19 @@ pub fn runProgram(self: *Self, bin: []u8) !void {
             const aligned_addr = std.mem.alignBackward(usize, s.sh_addr, paging.PAGE_SIZE);
             const src = bin[s.sh_offset .. s.sh_offset + s.sh_size];
             const ssize = s.sh_size + (s.sh_addr - aligned_addr);
-            try process.mapPages(aligned_addr, ssize, self.phys_frame_allocator);
+            try process.mapPages(aligned_addr, ssize);
             const dst: [*]u8 = @ptrFromInt(s.sh_addr);
             @memcpy(dst, src);
         }
     }
 
-    const user_stack = try self.phys_frame_allocator.alloc();
-    process.page_dir.mapUserRegions(user_stack, 0, paging.PAGE_SIZE);
-    self.active_process = &process;
-    thread.enter_userspace(@intCast(header.entry), paging.PAGE_SIZE);
+    const thread = try process.new_thread(@intCast(header.entry));
+    try process_scheduler.schedule_thread(thread);
 }
 
 pub fn destroyActiveProcess(self: *Self) void {
     self.kernel_page_dir.load();
-    if (self.active_process) |p| {
-        p.deinit(deinit_cb);
-    }
-    self.active_process = null;
+    process_scheduler.exit_active_thread(deinit_cb);
 }
 
 fn deinit_cb(addr: usize) void {

@@ -91,7 +91,7 @@ pub fn build(b: *std.Build) !void {
 
     const nodisplay = b.option(bool, "no-display", "disable qemu display") orelse false;
     const run_qemu = RunQemuStep.init(b, kernel_iso, nodisplay, &.{ "--serial", "stdio" });
-    const run_qemu_monitor = RunQemuStep.init(b, kernel_iso, nodisplay, &.{ "-d", "guest_errors", "-no-reboot", "-no-shutdown", "-monitor", "stdio" });
+    const run_qemu_monitor = RunQemuStep.init(b, kernel_iso, nodisplay, &.{ "-d", "int,guest_errors", "-no-reboot", "-no-shutdown", "-monitor", "stdio" });
     const run_qemu_debug = RunQemuStep.init(b, kernel_iso, nodisplay, &.{ "-s", "-S" });
 
     run_qemu.step.dependOn(&make_iso.step);
@@ -227,9 +227,16 @@ pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
         .cpu_model = .{ .explicit = &Target.x86.cpu.i386 },
     };
 
-    const programs = [_][]const u8{"write"};
+    const programs = [_][]const u8{ "write", "yeild" };
     const stdlib = b.addModule("stdlib", .{
         .source_file = .{ .path = "stdlib/stdlib.zig" },
+    });
+
+    const start = b.addObject(.{
+        .name = "start",
+        .root_source_file = .{ .path = "stdlib/start.zig" },
+        .target = target,
+        .optimize = .ReleaseSafe,
     });
 
     for (programs) |p| {
@@ -242,6 +249,7 @@ pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
             .linkage = .static,
         });
         exe.addModule("stdlib", stdlib);
+        exe.addObject(start);
         std.Build.installArtifact(b, exe);
         kernel_exe.step.dependOn(&exe.step);
         kernel_exe.addAnonymousModule(b.fmt("userspace_programs/{s}.elf", .{p}), .{ .source_file = .{

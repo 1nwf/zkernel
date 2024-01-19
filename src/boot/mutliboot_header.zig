@@ -37,7 +37,7 @@ pub const MemMapEntry = packed struct {
     base_addr: u64,
     len: u64,
     type: MemType,
-    reserved: u32,
+    reserved: u32 = undefined,
 };
 
 const MemMap = packed struct {

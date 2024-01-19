@@ -74,12 +74,12 @@ pub const EntryType = enum(u16) {
     UserData,
 };
 
-pub const kernel_code_offset = getEntry(.KernelCode);
-pub const kernel_data_offset = getEntry(.KernelData);
-pub const user_code_offset = getEntry(.UserCode);
-pub const user_data_offset = getEntry(.UserData);
+pub const kernel_code_offset = getEntryOffset(.KernelCode);
+pub const kernel_data_offset = getEntryOffset(.KernelData);
+pub const user_code_offset = getEntryOffset(.UserCode);
+pub const user_data_offset = getEntryOffset(.UserData);
 
-inline fn getEntry(e: EntryType) u16 {
+inline fn getEntryOffset(e: EntryType) u16 {
     return @intFromEnum(e) * 0x8;
 }
 

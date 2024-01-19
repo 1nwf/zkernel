@@ -16,7 +16,6 @@ pub const Entry = packed struct {
     selector: u16,
     /// reserved. set to zero
     reserved: u8,
-    /// conatins gate type, cpu privelage level and present bit
     gate_type: u4 = 0xE,
     zero: u1 = 0,
     dpl: u2,
