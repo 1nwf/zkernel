@@ -76,10 +76,9 @@ fn main(boot_info: *multiboot.BootInfo) !void {
     runUserspaceProgram(process_launcher, allocator);
 }
 
-fn runUserspaceProgram(
-    launcher: *ProcessLauncher,
-    allocator: std.mem.Allocator,
-) void {
-    var file = @embedFile("userspace_programs/write.elf").*;
-    launcher.runProgram(allocator, &file) catch unreachable;
+fn runUserspaceProgram(launcher: *ProcessLauncher, allocator: std.mem.Allocator) void {
+    var file1 = @embedFile("userspace_programs/write.elf").*;
+    var file2 = @embedFile("userspace_programs/yeild.elf").*;
+    launcher.runProgram(allocator, &file1) catch unreachable;
+    launcher.runProgram(allocator, &file2) catch unreachable;
 }

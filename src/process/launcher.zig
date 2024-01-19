@@ -36,6 +36,7 @@ pub fn runProgram(self: *Self, allocator: std.mem.Allocator, bin: []u8) !void {
         process.page_dir.mapRegions(region.start, region.start, region.size);
     }
     process.page_dir.load();
+    defer self.kernel_page_dir.load();
 
     var stream = io.fixedBufferStream(bin);
     const header = elf.Header.read(&stream) catch @panic("");
@@ -60,7 +61,6 @@ pub fn runProgram(self: *Self, allocator: std.mem.Allocator, bin: []u8) !void {
         }
     }
 
-    self.kernel_page_dir.load();
     const thread = try process.new_thread(@intCast(header.entry));
     try process_scheduler.schedule_thread(thread);
 }
