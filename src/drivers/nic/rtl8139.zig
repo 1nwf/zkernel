@@ -4,6 +4,7 @@ const log = std.log.scoped(.rtl8139);
 const Port = @import("arch").io.Port;
 const interrupt = @import("../../interrupts/interrupts.zig");
 const Nic = @import("../../net/Nic.zig");
+const arch = @import("arch");
 
 const RX_BUFFER_SIZE = 8192 + 16;
 const TX_BUFFER_SIZE = 1792;
@@ -91,7 +92,7 @@ pub fn init(pci_dev: *const pci.Device) !*Self {
     device.registers.cmd.write(0xC); // Sets Transmitter Enabled and Receiver Enabled bits to high
 
     const interrupt_line = pci_dev.location.readConfig(.InterruptLine);
-    interrupt.setIrqHandler(interrupt_line, interrupt_handler);
+    interrupt.setIrqHandler(interrupt_line, @intFromPtr(&rtl8139_int_handler));
 
     device.mac_address = device.read_mac_addr();
     device.print_mac_addr();
@@ -171,7 +172,8 @@ fn read_mac_addr(self: *const Self) [6]u8 {
     return mac;
 }
 
-export fn interrupt_handler(ctx: interrupt.Context) void {
+const rtl8139_int_handler = arch.interrupt_handler(interrupt_handler);
+export fn interrupt_handler(_: arch.thread.Context) usize {
     const status = device.registers.isr.read();
     device.registers.isr.write(0x5);
     if (status & TOK == TOK) {
@@ -179,8 +181,9 @@ export fn interrupt_handler(ctx: interrupt.Context) void {
     }
     if (status & ROK == ROK) {
         log.info("(int) received packet", .{});
+        Nic.handle_packet_recv();
     }
-    _ = ctx;
+    return 0;
 }
 
 fn read_packet(self: *Self) void {

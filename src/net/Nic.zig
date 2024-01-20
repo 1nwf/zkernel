@@ -6,7 +6,7 @@ const utils = @import("utils.zig");
 
 const dhcp = @import("protocols/dhcp.zig");
 
-const socket = @import("socket.zig");
+const Socket = @import("socket.zig");
 
 ptr: *anyopaque,
 mac_address: [6]u8,
@@ -42,7 +42,7 @@ pub fn init(ptr: *anyopaque, vtable: *const VTable, mac_address: [6]u8) *Self {
 
 // get ip, dns, and router gateway through dhcp
 pub fn dhcp_init(self: *Self, allocator: std.mem.Allocator) void {
-    var s = socket.init(allocator, .{
+    var s = Socket.init(allocator, .{
         .src_port = 68,
         .dest_port = 67,
         .dest_mac = .{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
@@ -52,4 +52,30 @@ pub fn dhcp_init(self: *Self, allocator: std.mem.Allocator) void {
 
     s.send(dhcp.discoverPacket(self.mac_address)) catch {};
     _ = s.recv();
+}
+
+pub fn handle_packet_recv() void {
+    const bytes = receive_packet() orelse return;
+    const frame = utils.bigEndianToStruct(eth_frame.Frame(void), bytes);
+    std.log.info("frame: {}", .{frame});
+    switch (frame.protocol) {
+        .Ipv4 => {
+            const ip_packet = utils.bigEndianToStruct(ip.IpPacket(void), bytes[@sizeOf(@TypeOf(frame))..]);
+            const data = bytes[@sizeOf(@TypeOf(frame)) + @sizeOf(@TypeOf(ip_packet)) ..];
+            handle_ip_packet(ip_packet, data);
+        },
+        .Arp => {},
+    }
+}
+
+fn handle_ip_packet(packet: ip.IpPacket(void), data: []u8) void {
+    std.log.info("ip packet: {}", .{packet});
+    switch (packet.header.next_level_protocol) {
+        .Udp => {
+            const datagram = utils.bigEndianToStruct(udp.Datagram(void), data);
+            const bytes = data[@sizeOf(@TypeOf(datagram))..];
+            _ = bytes;
+        },
+        else => @panic("not yet supported"),
+    }
 }

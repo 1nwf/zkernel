@@ -10,17 +10,19 @@ const int = @import("interrupts/interrupts.zig");
 const timer = @import("interrupts/timer.zig");
 const heap = @import("heap/heap.zig");
 const pg = arch.paging;
-const boot = @import("boot/mutliboot_header.zig");
+const multiboot = @import("boot/mutliboot_header.zig");
 const pci = @import("drivers/pci/pci.zig");
 const debug = @import("debug/debug.zig");
 
 const mem = @import("mem/mem.zig");
-const virt_mem = arch.virt_mem;
 const rtl8139 = @import("drivers/nic/rtl8139.zig");
 const net = @import("net/net.zig");
+const ProcessLauncher = @import("process/launcher.zig");
+const process_scheduler = @import("process/scheduler.zig");
 
-export fn kmain(bootInfo: *boot.MultiBootInfo) noreturn {
-    main(bootInfo) catch |e| {
+export fn kmain(boot_info: *multiboot.BootInfo) noreturn {
+    log.info("boot info: 0x{x}", .{@intFromPtr(boot_info)});
+    main(boot_info) catch |e| {
         log.info("panic: {}", .{e});
     };
     arch.halt();
@@ -52,7 +54,7 @@ pub const os = struct {
     pub const system = struct {};
 };
 
-fn main(bootInfo: *boot.MultiBootInfo) !void {
+fn main(boot_info: *multiboot.BootInfo) !void {
     var fixed_allocator = std.heap.FixedBufferAllocator.init(&buffer);
     var allocator = fixed_allocator.allocator();
     gdt.init();
@@ -60,20 +62,13 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     serial.init();
     vga.init(.{ .bg = .LightRed }, .Underline);
 
-    vga.writeln("bootloader name: {s}", .{bootInfo.boot_loader_name});
-    vga.writeln("header flags: 0b{b}", .{bootInfo.flags});
-
-    const mem_map_length = bootInfo.mmap_length / @sizeOf(boot.MemMapEntry);
-    vga.writeln("mmap length: {}", .{mem_map_length});
-
-    const mem_map: []boot.MemMapEntry = bootInfo.mmap_addr[0..mem_map_length];
-
-    var reserved_mem_regions = [_]mem.MemoryRegion{
+    const mem_map = try boot_info.get(.Mmap);
+    const reserved_mem_regions = [_]mem.MemoryRegion{
         mem.MemoryRegion.init(@intFromPtr(&kernel_start), @intFromPtr(&kernel_end) - @intFromPtr(&kernel_start)),
         mem.MemoryRegion.init(0xb8000, 25 * 80), // frame buffer
     };
 
-    var pmm = try mem.pmm.init(mem_map, allocator);
+    var pmm = try mem.pmm.init(mem_map.entries(), allocator, &reserved_mem_regions);
     var vmm = try mem.vmm.init(&kernel_page_dir, &pmm, &reserved_mem_regions, allocator);
     _ = vmm;
 
@@ -81,6 +76,11 @@ fn main(bootInfo: *boot.MultiBootInfo) !void {
     const nic_pci_dev = pci_devices.find(0x10ec, 0x8139) orelse @panic("nic not found");
     var nic = (try rtl8139.init(nic_pci_dev)).setNic();
     nic.dhcp_init(allocator);
+
+    try process_scheduler.init(allocator);
+
+    var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
+    runUserspaceProgram(process_launcher, allocator);
 }
 
 fn print_res(data: anytype) void {
@@ -110,4 +110,11 @@ fn send_test_udp_packet(nic: *net.Nic) !void {
     const packet = net.udp.Datagram(@TypeOf(dhcp_header)).init(68, 67, dhcp_header);
     const data = nic.make_udp_packet(@TypeOf(dhcp_header), packet, .{ 0, 0, 0, 0 }, .{ 0xff, 0xff, 0xff, 0xff });
     try nic.transmit_packet(&data);
+}
+
+fn runUserspaceProgram(launcher: *ProcessLauncher, allocator: std.mem.Allocator) void {
+    var file1 = @embedFile("userspace_programs/write.elf").*;
+    var file2 = @embedFile("userspace_programs/yeild.elf").*;
+    launcher.runProgram(allocator, &file1) catch unreachable;
+    launcher.runProgram(allocator, &file2) catch unreachable;
 }

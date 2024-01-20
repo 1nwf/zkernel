@@ -15,14 +15,13 @@ pmm: *FrameAllocator,
 page_directory: *pg.PageDirectory,
 address_space_manager: AddressSpaceManager,
 
-pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: []MemoryRegion, a: std.mem.Allocator) !Self {
+pub fn init(page_directory: *pg.PageDirectory, pmm: *FrameAllocator, reserved: []const MemoryRegion, a: std.mem.Allocator) !Self {
     var adm = AddressSpaceManager.init(a);
     var region = MemoryRegion.init(pg.PAGE_SIZE, std.mem.alignBackward(usize, std.math.maxInt(usize), pg.PAGE_SIZE) - pg.PAGE_SIZE);
     try adm.insert(region);
 
     for (reserved) |res| {
         page_directory.mapRegions(res.start, res.start, res.size);
-        try pmm.allocRegion(res.start, res.size);
     }
 
     page_directory.load();

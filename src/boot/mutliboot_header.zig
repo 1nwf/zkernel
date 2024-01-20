@@ -1,94 +1,28 @@
-pub const BootDevice = extern struct {
-    drive: u8,
-    p1: u8,
-    p2: u8,
-    p3: u8,
-};
+const std = @import("std");
 
-pub const AoutSymbols = extern struct {
-    tabsize: u32,
-    strsize: u32,
-    addr: u32,
-    reserved: u32,
-};
-pub const ElfSymbols = extern struct {
-    num: u32,
-    size: u32,
-    addr: u32,
-    shndx: u32,
-};
-
-const ColorInfoPalette = extern struct {
-    addr: u32,
-    num_colors: u16,
-};
-const ColorInfoRgb = extern struct {
-    red_field_pos: u8,
-    red_mask_size: u8,
-    green_field_pos: u8,
-    green_mask_size: u8,
-    blue_field_pos: u8,
-    blue_mask_size: u8,
-};
-
-const ColorInfo = extern union {
-    pallete: ColorInfoPalette,
-    rgb: ColorInfoRgb,
-};
-
-const Symbols = extern union {
-    aout_sym: AoutSymbols,
-    elf_sec: ElfSymbols,
-};
-
-const FramebufferTable = extern struct {
-    addr: u64,
-    pitch: u32,
-    width: u32,
-    height: u32,
-    bpp: u8,
-    type: u8,
-    color_info: ColorInfo,
-};
-
-pub const MultiBootInfo = extern struct {
-    flags: u32,
-    mem_lower: u32,
-    mem_upper: u32,
-    boot_device: BootDevice,
-    cmdline: u32,
-
-    mods_count: u32,
-    mods_addr: u32,
-    symbols: Symbols,
-
-    mmap_length: u32,
-    mmap_addr: [*]MemMapEntry,
-
-    drives_length: u32,
-    drives_addr: u32,
-
-    config_table: u32,
-
-    boot_loader_name: [*:0]const u8,
-
-    apm_table: u32,
-
-    vbe_control_info: u32,
-    vbe_mode_info: u32,
-    vbe_mode: u16,
-    vbe_interface_seg: u16,
-    vbe_interface_off: u16,
-    vbe_interface_len: u16,
-
-    framebuffer_table: FramebufferTable,
-};
-
-pub const MemMapEntry = extern struct {
-    size: u32,
-    base_addr: u64,
-    length: u64,
-    type: MemType,
+pub const TagType = enum(u32) {
+    End = 0,
+    Cmdline,
+    BootLoaderName,
+    Module,
+    MemInfo,
+    Bootdev,
+    Mmap,
+    Vbe,
+    Framebuffer,
+    ElfSections,
+    Apm,
+    Efi32,
+    Efi64,
+    Smbios,
+    AcpiV1,
+    AcpiV2,
+    Network,
+    EfiMmap,
+    EfiBs,
+    Efi32Ih,
+    Efi64Ih,
+    LoadBaseAddr,
 };
 
 pub const MemType = enum(u32) {
@@ -97,4 +31,62 @@ pub const MemType = enum(u32) {
     ACPI_Reclaimable,
     NVS,
     BadRam,
+};
+
+pub const MemMapEntry = packed struct {
+    base_addr: u64,
+    len: u64,
+    type: MemType,
+    reserved: u32 = undefined,
+};
+
+const MemMap = packed struct {
+    tag: TagInfo,
+    entry_size: u32,
+    entry_version: u32,
+
+    const Self = @This();
+    pub fn entries(self: *Self) []MemMapEntry {
+        const bytes: [*]u8 = @ptrCast(self);
+        return @alignCast(std.mem.bytesAsSlice(MemMapEntry, bytes[16..self.tag.size]));
+    }
+};
+
+const MemInfo = packed struct {
+    tag: TagInfo,
+    mem_lower: u32,
+    mem_upper: u32,
+};
+
+pub const BootInfo = packed struct {
+    size: u32,
+    reserved: u32,
+
+    const Self = @This();
+
+    fn tagType(comptime tag_type: TagType) type {
+        return switch (tag_type) {
+            .Mmap => MemMap,
+            .MemInfo => MemInfo,
+            else => @compileError("invalid tag type"),
+        };
+    }
+
+    pub fn get(self: *Self, comptime tag_type: TagType) !*tagType(tag_type) {
+        var ptr: [*]u8 = @ptrCast(self);
+        ptr += 8;
+        var tag: *TagInfo = @alignCast(@ptrCast(ptr));
+        while (tag.type != .End) : (tag = @ptrCast(@alignCast(ptr))) {
+            if (tag.type == tag_type) {
+                return @ptrCast(tag);
+            }
+            ptr += std.mem.alignForward(usize, tag.size, 8);
+        }
+        return error.InvalidTagType;
+    }
+};
+
+pub const TagInfo = packed struct {
+    type: TagType,
+    size: u32,
 };

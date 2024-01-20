@@ -16,23 +16,22 @@ pub const Entry = packed struct {
     selector: u16,
     /// reserved. set to zero
     reserved: u8,
-    /// conatins gate type, cpu privelage level and present bit
-    attributes: u8,
+    gate_type: u4 = 0xE,
+    zero: u1 = 0,
+    dpl: u2,
+    present: u1 = 1,
     /// high bits of ISR
     isr_high: u16,
 
     pub fn empty() Entry {
         return Entry{ .isr_low = 0, .selector = 0, .reserved = 0, .attributes = 0x8E, .isr_high = 0 };
     }
-    pub fn init(handler: usize) Entry {
+    pub fn init(handler: usize, dpl: u2) Entry {
         return Entry{
             .isr_low = @truncate((handler & 0xFFFF)),
             .selector = 0x8, // index of code segment in gdt
             .reserved = 0,
-            // --------------------------------------------------------------
-            // present: 1 | DPL: 0 | Gate Type: 0xE (32 bit interrupt gate) |
-            // --------------------------------------------------------------
-            .attributes = 0x8E,
+            .dpl = dpl,
             .isr_high = @truncate((handler >> 16)),
         };
     }
@@ -58,11 +57,8 @@ pub const IDTDescr = extern struct {
     }
 };
 
-pub fn setHandler(
-    idx: u8,
-    func: usize,
-) void {
-    idt[idx] = Entry.init(func);
+pub fn setHandler(idx: u8, func: usize, dpl: u2) void {
+    idt[idx] = Entry.init(func, dpl);
 }
 
 pub fn sidt() IDTDescr {
