@@ -41,8 +41,8 @@ pub fn init(ptr: *anyopaque, vtable: *const VTable, mac_address: [6]u8) *Self {
 }
 
 // get ip, dns, and router gateway through dhcp
-pub fn dhcp_init(self: *Self, allocator: std.mem.Allocator) void {
-    var s = Socket.init(allocator, .{
+pub fn dhcp_init(self: *Self, allocator: std.mem.Allocator) !void {
+    var s = try Socket.init(allocator, .{
         .src_port = 68,
         .dest_port = 67,
         .dest_mac = .{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
@@ -62,13 +62,13 @@ pub fn handle_packet_recv() void {
         .Ipv4 => {
             const ip_packet = utils.bigEndianToStruct(ip.IpPacket(void), bytes[@sizeOf(@TypeOf(frame))..]);
             const data = bytes[@sizeOf(@TypeOf(frame)) + @sizeOf(@TypeOf(ip_packet)) ..];
-            handle_ip_packet(ip_packet, data);
+            handle_ip_packet_recv(ip_packet, data);
         },
         .Arp => {},
     }
 }
 
-fn handle_ip_packet(packet: ip.IpPacket(void), data: []u8) void {
+fn handle_ip_packet_recv(packet: ip.IpPacket(void), data: []u8) void {
     std.log.info("ip packet: {}", .{packet});
     switch (packet.header.next_level_protocol) {
         .Udp => {
