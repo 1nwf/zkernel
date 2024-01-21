@@ -42,6 +42,11 @@ pub fn build(b: *std.Build) !void {
 
     const nasm_out = compileNasmSource(b, &nasm_sources);
 
+    const syscalls = b.addModule("syscalls", .{
+        .source_file = .{ .path = "syscalls/syscalls.zig" },
+    });
+    exe.addModule("syscalls", syscalls);
+
     const arch = b.addModule("arch", .{
         .source_file = .{
             .path = "src/arch.zig",
@@ -228,8 +233,11 @@ pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
     };
 
     const programs = [_][]const u8{ "write", "yeild" };
+
+    const syscalls = b.modules.get("syscalls") orelse @panic("unable to find syscalls module");
     const stdlib = b.addModule("stdlib", .{
         .source_file = .{ .path = "stdlib/stdlib.zig" },
+        .dependencies = &.{.{ .name = "syscalls", .module = syscalls }},
     });
 
     const start = b.addObject(.{
@@ -238,6 +246,7 @@ pub fn addUserspacePrograms(b: *std.Build, kernel_exe: *Step.Compile) void {
         .target = target,
         .optimize = .ReleaseSafe,
     });
+    start.addModule("syscalls", syscalls);
 
     for (programs) |p| {
         const source_file = b.fmt("userspace_programs/{s}/src/main.zig", .{p});

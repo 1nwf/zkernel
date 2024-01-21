@@ -20,6 +20,17 @@ pub fn schedule_thread(thread: *Thread) !void {
     try self.run_queue.pushBack(thread);
 }
 
+pub fn setActiveThread(ctx: arch.thread.Context, th: ?*Thread) !void {
+    if (self.active_thread) |curr_thread| {
+        curr_thread.context = ctx;
+        try schedule_thread(curr_thread);
+    }
+    self.active_thread = th;
+    if (th) |thread| {
+        thread.process.page_dir.load();
+    }
+}
+
 pub fn run_next(ctx: arch.thread.Context) ?*arch.thread.Context {
     if (self.run_queue.isEmpty()) return null;
     if (self.active_thread) |th| {
@@ -37,4 +48,10 @@ pub fn exit_active_thread(cb: *const fn (usize) void) void {
         th.process.deinit_thread(th, cb);
     }
     self.active_thread = null;
+}
+
+pub fn takeCurrentThread() ?*Thread {
+    const thread = self.active_thread;
+    self.active_thread = null;
+    return thread;
 }

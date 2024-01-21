@@ -1,14 +1,14 @@
 const std = @import("std");
 const Writer = std.io.Writer(void, error{}, writeFn);
 const writer: Writer = .{ .context = {} };
+const Syscall = @import("syscalls").Syscall;
 
 fn write(str: *const []const u8) void {
     asm volatile (
-        \\ xor %%eax, %%eax
         \\ int $48
         :
         : [value] "{ebx}" (str),
-        : "eax"
+          [_] "{eax}" (Syscall.Print),
     );
 }
 
