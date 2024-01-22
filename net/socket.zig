@@ -5,7 +5,6 @@ const udp = @import("protocols/udp.zig");
 const utils = @import("utils.zig");
 const Frame = @import("ethernet_frame.zig").Frame;
 const ip = @import("protocols/ip.zig");
-const Deque = @import("../utils/deque.zig").Deque;
 
 const Self = @This();
 
@@ -19,13 +18,11 @@ const SocketOptions = struct {
 
 options: SocketOptions,
 allocator: std.mem.Allocator,
-recv_buffer: Deque([]u8, 10),
 
 pub fn init(allocator: std.mem.Allocator, options: SocketOptions) !Self {
     return .{
         .options = options,
         .allocator = allocator,
-        .recv_buffer = try Deque([]u8, 10).init(allocator),
     };
 }
 
@@ -60,19 +57,6 @@ pub fn send(self: *Self, data: anytype) !void {
 }
 
 pub fn recv(self: *Self) ?[]u8 {
-    if (self.recv_buffer.isEmpty()) return null;
-    return self.recv_buffer.popFront();
-
-    // const bytes = nic.receive_packet() orelse return null;
-    // const frame = utils.bigEndianToStruct(Frame(void), bytes);
-    // if (frame.protocol != .Ipv4) return null;
-    // const ip_packet = utils.bigEndianToStruct(ip.IpPacket(void), bytes[@offsetOf(@TypeOf(frame), "packet")..]);
-    // std.log.info("ip: {}", .{ip_packet});
-    // if (ip_packet.header.next_level_protocol != .Udp) return null;
-
-    // const data_offset = @sizeOf(@TypeOf(frame)) + @offsetOf(@TypeOf(ip_packet), "data");
-    // const datagram = utils.bigEndianToStruct(udp.Datagram(void), bytes[data_offset..]);
-    // std.log.info("datagram: {}", .{datagram});
-
-    // return bytes;
+    _ = self;
+    return null;
 }

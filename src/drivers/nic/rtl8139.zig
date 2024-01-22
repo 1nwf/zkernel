@@ -3,7 +3,7 @@ const std = @import("std");
 const log = std.log.scoped(.rtl8139);
 const Port = @import("arch").io.Port;
 const interrupt = @import("../../interrupts/interrupts.zig");
-const Nic = @import("../../net/Nic.zig");
+const Nic = @import("net").Nic;
 const arch = @import("arch");
 
 const RX_BUFFER_SIZE = 8192 + 16;

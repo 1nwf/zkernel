@@ -45,14 +45,17 @@ pub fn build(b: *std.Build) !void {
     const syscalls = b.addModule("syscalls", .{
         .source_file = .{ .path = "syscalls/syscalls.zig" },
     });
-    exe.addModule("syscalls", syscalls);
-
     const arch = b.addModule("arch", .{
         .source_file = .{
             .path = "src/arch.zig",
         },
     });
+    const net = b.addModule("net", .{
+        .source_file = .{ .path = "net/net.zig" },
+    });
+    exe.addModule("net", net);
     exe.addModule("arch", arch);
+    exe.addModule("syscalls", syscalls);
 
     for (nasm_out) |out| {
         exe.addObjectFile(.{ .path = out });

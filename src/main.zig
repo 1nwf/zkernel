@@ -16,7 +16,7 @@ const debug = @import("debug/debug.zig");
 
 const mem = @import("mem/mem.zig");
 const rtl8139 = @import("drivers/nic/rtl8139.zig");
-const net = @import("net/net.zig");
+const net = @import("net");
 const ProcessLauncher = @import("process/launcher.zig");
 const process_scheduler = @import("process/scheduler.zig");
 
