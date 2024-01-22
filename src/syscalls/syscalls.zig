@@ -1,23 +1,11 @@
 const std = @import("std");
 const arch = @import("arch");
 const writefn = @import("../drivers/vga.zig").write;
-const process_scheduler = @import("../process/scheduler.zig");
+const scheduler = @import("../process/scheduler.zig");
 const log = std.log;
+const Syscall = @import("syscalls").Syscall;
 
 const exit = @import("exit.zig").exit;
-
-pub const Syscall = enum(u32) {
-    Print = 0,
-    Exit,
-    Read,
-    Yeild,
-    fn fromInt(val: u32) ?@This() {
-        return switch (val) {
-            0...3 => @enumFromInt(val),
-            else => null,
-        };
-    }
-};
 
 pub const syscall_int_handler = arch.interrupt_handler(syscall_handler);
 
@@ -48,7 +36,11 @@ export fn syscall_handler(ctx: arch.thread.Context) usize {
             }
         },
         .Exit => exit(),
-        .Read => {},
+        .Read => {
+            if (read(ctx, arg1)) |new_ctx| {
+                return @intFromPtr(new_ctx);
+            }
+        },
         .Yeild => return yeild(ctx),
     }
 
@@ -56,8 +48,30 @@ export fn syscall_handler(ctx: arch.thread.Context) usize {
 }
 
 inline fn yeild(ctx: arch.thread.Context) usize {
-    if (process_scheduler.run_next(ctx)) |next| {
+    if (scheduler.run_next(ctx)) |next| {
         return @intFromPtr(next);
     }
     return 0;
+}
+
+const keyboard = @import("../drivers/keyboard.zig");
+
+fn read(ctx: arch.thread.Context, handle: u32) ?*arch.thread.Context {
+    switch (handle) {
+        1 => {
+            var thread = scheduler.takeCurrentThread() orelse @panic("current thread is null");
+            thread.context = ctx;
+            keyboard.setListeningThread(thread);
+            if (scheduler.run_next(ctx)) |new_ctx| {
+                return new_ctx;
+            } else {
+                arch.halt();
+            }
+        },
+        else => {
+            log.info("invalid handle number", .{});
+        },
+    }
+
+    return null;
 }

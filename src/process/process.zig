@@ -1,12 +1,11 @@
 const std = @import("std");
-
 const arch = @import("arch");
 const Context = arch.thread.Context;
 const gdt = arch.gdt;
 const paging = arch.paging;
-
 const mem = @import("../mem/mem.zig");
 const PhysFrameAllocator = mem.pmm;
+const Message = @import("syscalls").Message;
 
 const THREAD_STACK_SIZE = arch.paging.PAGE_SIZE;
 
@@ -85,4 +84,9 @@ pub const Thread = struct {
     stack_end: usize,
     stack_size: usize,
     context: Context,
+
+    pub fn setReturnMessage(self: *Thread, msg: Message) void {
+        self.context.ebx = msg.msg;
+        self.context.eax = @intFromEnum(msg.mtype);
+    }
 };

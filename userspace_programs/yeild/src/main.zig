@@ -4,4 +4,9 @@ export fn main() void {
         std.println("p2: {}", .{i});
         std.yeild();
     }
+
+    while (true) {
+        const msg = std.read(1);
+        std.print("{u}", .{@as(u21, @intCast(msg.msg))});
+    }
 }

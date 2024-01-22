@@ -4,6 +4,9 @@ const write = @import("vga.zig").write;
 const arch = @import("arch");
 const idt = @import("../interrupts/idt.zig");
 const pic = @import("../interrupts/pic.zig");
+const Thread = @import("../process/process.zig").Thread;
+const std = @import("std");
+const log = std.log;
 
 const unicode = @import("std").unicode;
 const sendEoi = @import("../interrupts/pic.zig").sendEoi;
@@ -14,18 +17,35 @@ pub fn init_keyboard() void {
 }
 
 var modifiers = Modifiers.init();
+const scheduler = @import("../process/scheduler.zig");
+
+pub var listening_thread: ?*Thread = null;
+
 export fn keyboardHandler(ctx: arch.thread.Context) usize {
-    _ = ctx;
     const scancode = in(0x60, u8);
     const key = Key.init(scancode);
+    var next_ctx: usize = 0;
     if (Modifiers.is_modifier(key)) {
         modifiers.update(key);
     } else if (!key.release) {
-        var letter = key.decode();
-        write("{u}", .{letter.value});
+        // var letter = key.decode();
+        // write("{u}", .{letter.value});
+        if (listening_thread) |th| {
+            th.setReturnMessage(.{
+                .mtype = .char,
+                .msg = @intCast(key.decode().value),
+            });
+            scheduler.setActiveThread(ctx, th) catch @panic("unable to set current thread");
+            listening_thread = null;
+            next_ctx = @intFromPtr(&th.context);
+        }
     }
     sendEoi(1);
-    return 0;
+    return next_ctx;
+}
+
+pub fn setListeningThread(th: *Thread) void {
+    listening_thread = th;
 }
 
 // ported from https://crates.io/crates/pc-keyboard Us104Key keyboard layout
