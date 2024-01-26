@@ -24,66 +24,149 @@ pub const Header = extern struct {
     magic_cookie: [4]u8 = MAGIC_COOKIE,
 };
 
-pub const Options = extern struct {
-    const OptionType = enum(u8) {
-        MessageType = 53,
-        SubnetMask,
-    };
-
-    const MessageType = enum(u8) {
-        Discover = 1,
-        Offer,
-        Request,
-        Decline,
-        Ack,
-        Nak,
-        Release,
-        Inform,
-    };
-
-    option_type: OptionType,
-    length: u8,
-    data: u8,
+const MessageType = enum(u8) {
+    discover = 1,
+    offer,
+    request,
+    decline,
+    ack,
+    nak,
+    release,
+    inform,
 };
 
-pub fn Packet(comptime options_len: u8) type {
+const OptionType = enum(u8) {
+    message_type = 53,
+    subnet_mask = 1,
+    dhcp_server_id = 54,
+    router = 3,
+    dns_addr = 6,
+    ip_lease_time = 51,
+    requested_ip_addr = 50,
+    max_size = 57,
+    host_name = 12,
+
+    param_request_list = 55,
+
+    end = 0xff,
+};
+
+pub fn OptionHeader(comptime T: type) type {
     return extern struct {
-        header: Header,
-        options: [options_len]u8,
-        end: u8 = 0xff,
+        option_type: OptionType,
+        length: u8 = @sizeOf(T),
+        value: T align(1),
 
         const Self = @This();
+        pub fn init(option_type: OptionType, value: T) Self {
+            return .{ .option_type = option_type, .value = value };
+        }
     };
 }
 
-const ClientId = extern struct {
-    option: u8 = 61,
-    length: u8,
-    hw_type: u8,
-    addr: [6]u8 align(1),
+pub const Options = union(OptionType) {
+    message_type: MessageType,
+    dhcp_server_id: [4]u8,
+    subnet_mask: [4]u8,
+    router: [4]u8,
+    dns_addr: [4]u8,
+    ip_lease_time: u32,
+    requested_ip_addr: [4]u8,
+    host_name: [4]u8, // limit to 4 for now
+    max_size: u16,
+    // param list could contain more values. size limit is to avoid dynamic allocation
+    param_request_list: [4]u8,
+    end: void,
 };
 
-const HostName = extern struct {
-    option: u8 = 12,
-    length: u8 = 5,
-    name: [5]u8 align(1) = [_]u8{ 'a', 'l', 'a', 'r', 'm' },
-};
-
-const MaxSize = extern struct {
-    option: u8 = 57,
-    length: u8 = 2,
-    name: u16 align(1) = @byteSwap(@as(u16, 1472)),
+const Packet = extern struct {
+    header: Header,
+    options: [50]u8, // limit to 50 for now
+    end: u8 = 0xff,
+    const Self = @This();
 };
 
 fn ParameterRequestList(comptime params: u8) type {
     return extern struct {
-        option: u8 = 55,
+        option_type: u8 = 55,
         length: u8 = params,
         options: [params]u8 align(1),
     };
 }
 
-pub fn discoverPacket(mac_addr: [6]u8) Packet(25) {
+pub fn readOptions(allocator: std.mem.Allocator, data: []u8) ![]Options {
+    var idx: usize = 0;
+    var options = std.ArrayList(Options).init(allocator);
+    while (idx < data.len) {
+        const option_type: OptionType = @enumFromInt(data[idx]);
+        const length = data[idx + 1];
+        switch (option_type) {
+            .message_type => {
+                const msg_type: MessageType = @enumFromInt(data[idx + 2]); // skip len byte
+                try options.append(Options{ .message_type = msg_type });
+            },
+            .subnet_mask => {
+                var value: [4]u8 = undefined;
+                @memcpy(&value, data[idx + 2 .. idx + 2 + 4]);
+                try options.append(Options{ .subnet_mask = value });
+            },
+            .dhcp_server_id => {
+                var value: [4]u8 = undefined;
+                @memcpy(&value, data[idx + 2 .. idx + 2 + 4]);
+                try options.append(Options{ .dhcp_server_id = value });
+            },
+            .router => {
+                var value: [4]u8 = undefined;
+                @memcpy(&value, data[idx + 2 .. idx + 2 + 4]);
+                try options.append(Options{ .router = value });
+            },
+            .dns_addr => {
+                var value: [4]u8 = undefined;
+                @memcpy(&value, data[idx + 2 .. idx + 2 + 4]);
+                try options.append(Options{ .dns_addr = value });
+            },
+            .ip_lease_time => {
+                const value = std.mem.readIntSliceBig(u32, data[idx + 2 .. idx + 2 + 4]);
+                try options.append(Options{ .ip_lease_time = value });
+            },
+            .end => break,
+            else => @panic("todo"),
+        }
+        idx += 2 + length;
+    }
+
+    return try options.toOwnedSlice();
+}
+
+pub fn optionsToBytes(options: []const Options) [50]u8 {
+    if (options.len > 50) @panic("options exceed max len 50");
+    var bytes: [50]u8 = std.mem.zeroes([50]u8);
+    var idx: usize = 0;
+    for (options) |val| {
+        switch (val) {
+            .message_type => |t| {
+                const value = std.mem.toBytes(OptionHeader(MessageType).init(val, t));
+                @memcpy(bytes[idx .. idx + @sizeOf(@TypeOf(value))], &value);
+                idx += 3;
+            },
+            .dhcp_server_id, .requested_ip_addr, .host_name, .param_request_list => |data| {
+                const value = std.mem.toBytes(OptionHeader([4]u8).init(val, data));
+                @memcpy(bytes[idx .. idx + @sizeOf(@TypeOf(value))], &value);
+                idx += 6;
+            },
+            .max_size => |size| {
+                const value = std.mem.toBytes(OptionHeader(u16).init(val, size));
+                @memcpy(bytes[idx .. idx + @sizeOf(@TypeOf(value))], &value);
+                idx += 6; // actual size is 4 but we add 2 bytes of padding
+            },
+            else => @panic("todo"),
+        }
+    }
+
+    return bytes;
+}
+
+pub fn discoverPacket(mac_addr: [6]u8) Packet {
     const header = Header{
         .op = .Request,
         .hops = 0,
@@ -97,16 +180,41 @@ pub fn discoverPacket(mac_addr: [6]u8) Packet(25) {
         .chaddr = mac_addr,
     };
 
-    const params = ParameterRequestList(9){
-        .options = [_]u8{ 1, 3, 6, 12, 15, 33, 42, 120, 121 },
+    const options = [_]Options{
+        .{ .message_type = .discover },
+        .{ .max_size = std.mem.nativeToBig(u16, 1024) },
+        .{ .host_name = "test".* },
+        .{ .param_request_list = .{ 1, 3, 6, 0 } },
     };
 
     return .{
         .header = header,
-        .options = std.mem.toBytes(Options{
-            .option_type = .MessageType,
-            .length = 1,
-            .data = 1,
-        }) ++ std.mem.toBytes(params) ++ std.mem.toBytes(MaxSize{}) ++ std.mem.toBytes(HostName{}),
+        .options = optionsToBytes(&options),
+    };
+}
+
+pub fn makeRequest(mac_addr: [6]u8, ip_addr: [4]u8, dhcp_id: [4]u8) Packet {
+    const header = Header{
+        .op = .Request,
+        .hops = 0,
+        .xid = 0,
+        .secs = 1,
+        .flags = 0x0000,
+        .ciaddr = std.mem.zeroes([4]u8),
+        .yiaddr = std.mem.zeroes([4]u8),
+        .siaddr = std.mem.zeroes([4]u8),
+        .giaddr = std.mem.zeroes([4]u8),
+        .chaddr = mac_addr,
+    };
+
+    const options = [_]Options{
+        .{ .message_type = .request },
+        .{ .dhcp_server_id = dhcp_id },
+        .{ .requested_ip_addr = ip_addr },
+    };
+
+    return Packet{
+        .header = header,
+        .options = optionsToBytes(&options),
     };
 }
