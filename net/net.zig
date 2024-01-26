@@ -6,3 +6,6 @@ pub const ip = @import("protocols/ip.zig");
 pub const dhcp = @import("protocols/dhcp.zig");
 
 pub usingnamespace @import("utils.zig");
+pub const Interface = @import("iface.zig");
+
+pub var IFACE: Interface = undefined;

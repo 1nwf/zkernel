@@ -3,8 +3,10 @@ const std = @import("std");
 const log = std.log.scoped(.rtl8139);
 const Port = @import("arch").io.Port;
 const interrupt = @import("../../interrupts/interrupts.zig");
-const Nic = @import("net").Nic;
+const net = @import("net");
+const Nic = net.Nic;
 const arch = @import("arch");
+const pic = @import("../../interrupts/pic.zig");
 
 const RX_BUFFER_SIZE = 8192 + 16;
 const TX_BUFFER_SIZE = 1792;
@@ -35,6 +37,7 @@ registers: struct {
 
 active_tx_idx: u8 = 0,
 mac_address: [6]u8,
+irq_line: usize,
 
 pub fn init(pci_dev: *const pci.Device) !*Self {
     pci_dev.enableBusMastering();
@@ -75,6 +78,7 @@ pub fn init(pci_dev: *const pci.Device) !*Self {
             .rx_config = Port(u32).init(iobase + 0x44),
         },
         .mac_address = undefined,
+        .irq_line = undefined,
     };
 
     log.info("iobase: 0x{x}", .{iobase});
@@ -93,6 +97,7 @@ pub fn init(pci_dev: *const pci.Device) !*Self {
 
     const interrupt_line = pci_dev.location.readConfig(.InterruptLine);
     interrupt.setIrqHandler(interrupt_line, @intFromPtr(&rtl8139_int_handler));
+    device.irq_line = interrupt_line;
 
     device.mac_address = device.read_mac_addr();
     device.print_mac_addr();
@@ -181,8 +186,10 @@ export fn interrupt_handler(_: arch.thread.Context) usize {
     }
     if (status & ROK == ROK) {
         log.info("(int) received packet", .{});
-        Nic.handle_packet_recv();
+        net.IFACE.proecssEthernetFrame();
     }
+
+    pic.sendEoi(device.irq_line);
     return 0;
 }
 

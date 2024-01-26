@@ -75,12 +75,13 @@ fn main(boot_info: *multiboot.BootInfo) !void {
     const pci_devices = try pci.init(allocator);
     const nic_pci_dev = pci_devices.find(0x10ec, 0x8139) orelse @panic("nic not found");
     var nic = (try rtl8139.init(nic_pci_dev)).setNic();
-    try nic.dhcp_init(allocator);
 
     try process_scheduler.init(allocator);
-
     var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
     runUserspaceProgram(process_launcher, allocator);
+
+    net.IFACE = net.Interface.init(allocator, nic);
+    try net.IFACE.dhcp_init();
 }
 
 fn print_res(data: anytype) void {

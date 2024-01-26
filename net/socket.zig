@@ -8,21 +8,29 @@ const ip = @import("protocols/ip.zig");
 
 const Self = @This();
 
+pub const Protocol = enum { Udp };
+
 const SocketOptions = struct {
     src_port: u16,
     dest_port: u16,
+    //
+    dest_ip: [4]u8,
+    src_ip: [4]u8,
+    //
     dest_mac: [6]u8,
     src_mac: [6]u8,
-    protocol: enum { Udp },
+    protocol: Protocol,
 };
 
 options: SocketOptions,
 allocator: std.mem.Allocator,
+rx_buffer: std.ArrayList([]u8),
 
-pub fn init(allocator: std.mem.Allocator, options: SocketOptions) !Self {
+pub fn init(allocator: std.mem.Allocator, options: SocketOptions) Self {
     return .{
         .options = options,
         .allocator = allocator,
+        .rx_buffer = std.ArrayList([]u8).init(allocator),
     };
 }
 
@@ -37,8 +45,8 @@ fn make_packet(self: Self, data: anytype) ![]u8 {
         .ttl = 64,
         .next_level_protocol = .Udp,
         .checksum = 0,
-        .source_ip = .{ 0, 0, 0, 0 },
-        .dest_ip = .{ 0xff, 0xff, 0xff, 0xff },
+        .source_ip = self.options.src_ip,
+        .dest_ip = self.options.dest_ip,
     };
     ip_header.calcChecksum();
 
@@ -57,6 +65,22 @@ pub fn send(self: *Self, data: anytype) !void {
 }
 
 pub fn recv(self: *Self) ?[]u8 {
-    _ = self;
-    return null;
+    if (self.rx_buffer.items.len == 0) {
+        return null;
+    }
+    return self.rx_buffer.pop();
+}
+
+pub fn process(self: *Self, data: []u8) void {
+    var buff = self.allocator.alloc(u8, data.len) catch @panic("alloc failed");
+    @memcpy(buff, data);
+    self.rx_buffer.insert(0, buff) catch @panic("insert failed");
+}
+
+pub fn accepts(self: *Self, src_port: usize, dest_port: usize) bool {
+    return self.options.dest_port == src_port and self.options.src_port == dest_port;
+}
+
+pub fn free(self: *Self, slice: []u8) void {
+    self.allocator.free(slice);
 }

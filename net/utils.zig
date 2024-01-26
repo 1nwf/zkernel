@@ -66,13 +66,19 @@ pub fn structToBigEndian(value: anytype) [@bitSizeOf(@TypeOf(value)) / 8]u8 {
     return data;
 }
 
-pub fn bigEndianToStruct(comptime T: type, buffer: []u8) T {
-    var value = std.mem.bytesToValue(T, buffer[0..@sizeOf(T)]);
-    try byteSwapStruct(T, &value);
+// pub fn bigEndianToStruct(comptime T: type, buffer: []u8) T {
+//     var value = std.mem.bytesToValue(T, buffer[0..@sizeOf(T)]);
+//     try byteSwapStruct(T, &value);
+//     return value;
+// }
+
+pub fn bigEndianAsStruct(comptime T: type, buffer: []u8) *T {
+    var value = std.mem.bytesAsValue(T, buffer[0..@sizeOf(T)]);
+    try byteSwapStruct(T, value);
     return value;
 }
 
-fn byteSwapStruct(comptime T: type, value: *T) !void {
+pub fn byteSwapStruct(comptime T: type, value: *T) !void {
     inline for (std.meta.fields(T)) |f| {
         switch (@typeInfo(f.type)) {
             .Int => {

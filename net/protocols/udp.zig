@@ -1,5 +1,3 @@
-const ip = @import("ip.zig");
-
 pub fn Datagram(comptime T: type) type {
     return extern struct {
         src_port: u16 align(1),
