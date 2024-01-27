@@ -81,7 +81,7 @@ fn main(boot_info: *multiboot.BootInfo) !void {
     runUserspaceProgram(process_launcher, allocator);
 
     net.IFACE = net.Interface.init(allocator, nic);
-    try net.IFACE.dhcp_init();
+    try net.IFACE.dhcp_init(&timer.wait);
 }
 
 fn print_res(data: anytype) void {

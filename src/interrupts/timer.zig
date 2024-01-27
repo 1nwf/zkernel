@@ -47,7 +47,7 @@ pub fn read_count() u16 {
     return count;
 }
 
-pub export fn wait(ms: u32) void {
+pub fn wait(ms: u32) void {
     var target = ticks + ms;
     while (ticks < target) {
         asm volatile ("hlt");

@@ -60,7 +60,7 @@ pub fn process_udp(self: *Self, datagram: *udp.Datagram(void)) void {
     }
 }
 
-pub fn dhcp_init(self: *Self) !void {
+pub fn dhcp_init(self: *Self, sleepFn: *const fn (ms: usize) void) !void {
     var arr = try self.sockets.getOrPut(.Udp);
     if (!arr.found_existing) {
         arr.value_ptr.* = std.ArrayList(Socket).init(self.allocator);
@@ -78,6 +78,10 @@ pub fn dhcp_init(self: *Self) !void {
     var socket = &arr.value_ptr.items[arr.value_ptr.items.len - 1];
     socket.send(dhcp.discoverPacket(self.nic.mac_address)) catch {};
 
+    if (!socket.can_recv()) {
+        sleepFn(500);
+    }
+
     const data = socket.recv() orelse @panic("recv is empty");
     defer socket.free(data);
 
@@ -94,6 +98,10 @@ pub fn dhcp_init(self: *Self) !void {
 
     socket.options.src_ip = ip_addr;
     try socket.send(dhcp.makeRequest(self.nic.mac_address, ip_addr, dhcp_id));
+
+    if (!socket.can_recv()) {
+        sleepFn(500);
+    }
 
     const ack = socket.recv() orelse @panic("recv is empty");
     defer socket.free(ack);

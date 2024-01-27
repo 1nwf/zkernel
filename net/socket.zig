@@ -24,6 +24,7 @@ const SocketOptions = struct {
 
 options: SocketOptions,
 allocator: std.mem.Allocator,
+// TODO: use ring buffer
 rx_buffer: std.ArrayList([]u8),
 
 pub fn init(allocator: std.mem.Allocator, options: SocketOptions) Self {
@@ -65,9 +66,10 @@ pub fn send(self: *Self, data: anytype) !void {
 }
 
 pub fn recv(self: *Self) ?[]u8 {
-    if (self.rx_buffer.items.len == 0) {
+    if (!self.can_recv()) {
         return null;
     }
+
     return self.rx_buffer.pop();
 }
 
@@ -83,4 +85,8 @@ pub fn accepts(self: *Self, src_port: usize, dest_port: usize) bool {
 
 pub fn free(self: *Self, slice: []u8) void {
     self.allocator.free(slice);
+}
+
+pub inline fn can_recv(self: *Self) bool {
+    return self.rx_buffer.items.len != 0;
 }
