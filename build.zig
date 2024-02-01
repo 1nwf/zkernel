@@ -49,10 +49,22 @@ pub fn build(b: *std.Build) !void {
         .source_file = .{
             .path = "src/arch.zig",
         },
+        .dependencies = &.{.{
+            .name = "syscalls",
+            .module = syscalls,
+        }},
     });
+    const utils = b.addModule("utils", .{ .source_file = .{
+        .path = "src/utils/utils.zig",
+    } });
     const net = b.addModule("net", .{
         .source_file = .{ .path = "net/net.zig" },
+        .dependencies = &.{.{
+            .name = "utils",
+            .module = utils,
+        }},
     });
+    exe.addModule("utils", utils);
     exe.addModule("net", net);
     exe.addModule("arch", arch);
     exe.addModule("syscalls", syscalls);

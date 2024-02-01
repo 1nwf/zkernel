@@ -16,7 +16,7 @@ pub fn halt() noreturn {
     }
 }
 
-pub fn interrupt_handler(comptime handler: fn (thread.Context) callconv(.C) usize) fn () callconv(.Naked) void {
+pub fn interrupt_handler(comptime handler: fn (*thread.Context) callconv(.C) usize) fn () callconv(.Naked) void {
     return struct {
         fn _fn() callconv(.Naked) void {
             asm volatile (
@@ -29,14 +29,16 @@ pub fn interrupt_handler(comptime handler: fn (thread.Context) callconv(.C) usiz
                 \\ push %%ebp
                 \\ push %%esi
                 \\ push %%edi
+                \\ push %%esp
                 \\
                 // ":c" makes llvm print the symbol name
                 \\ call %[handler:c] 
                 \\ test %%eax, %%eax
-                \\ jz 1f
-                \\ mov %%eax, %%esp
+                \\ jnz 1f
+                \\ pop %%eax
                 \\
                 \\1:
+                \\ mov %%eax, %%esp
                 \\ pop %%edi
                 \\ pop %%esi
                 \\ pop %%ebp

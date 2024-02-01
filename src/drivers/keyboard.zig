@@ -21,7 +21,7 @@ const scheduler = @import("../process/scheduler.zig");
 
 pub var listening_thread: ?*Thread = null;
 
-export fn keyboardHandler(ctx: arch.thread.Context) usize {
+export fn keyboardHandler(ctx: *arch.thread.Context) usize {
     const scancode = in(0x60, u8);
     const key = Key.init(scancode);
     var next_ctx: usize = 0;
@@ -31,11 +31,11 @@ export fn keyboardHandler(ctx: arch.thread.Context) usize {
         // var letter = key.decode();
         // write("{u}", .{letter.value});
         if (listening_thread) |th| {
-            th.setReturnMessage(.{
+            th.context.setReturnMessage(.{
                 .mtype = .char,
                 .msg = @intCast(key.decode().value),
             });
-            scheduler.setActiveThread(ctx, th) catch @panic("unable to set current thread");
+            scheduler.setActiveThread(ctx.*, th) catch @panic("unable to set current thread");
             listening_thread = null;
             next_ctx = @intFromPtr(&th.context);
         }

@@ -80,37 +80,8 @@ fn main(boot_info: *multiboot.BootInfo) !void {
     var process_launcher = ProcessLauncher.init(&pmm, &kernel_page_dir, &reserved_mem_regions);
     runUserspaceProgram(process_launcher, allocator);
 
-    net.IFACE = net.Interface.init(allocator, nic);
+    net.IFACE = try net.Interface.init(allocator, nic);
     try net.IFACE.dhcp_init(&timer.wait);
-}
-
-fn print_res(data: anytype) void {
-    inline for (std.meta.fields(@TypeOf(data))) |f| {
-        switch (@typeInfo(f.type)) {
-            .Int => log.info("{s}: {x}", .{ f.name, @field(data, f.name) }),
-            .Enum => log.info("{s}: {}", .{ f.name, @field(data, f.name) }),
-            .Struct => print_res(@field(data, f.name)),
-            else => {},
-        }
-    }
-}
-
-fn send_test_arp_packet(nic: *net.Nic) !void {
-    const host_ip = [_]u8{ 192, 168, 1, 115 }; // vm ip address
-    const target_ip = [_]u8{ 192, 168, 1, 1 };
-    const packet = net.arp.Packet(.Ethernet, .IPv4).initRequest(nic.mac_address, host_ip, target_ip);
-    const res = try nic.send_arp(packet, .{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
-    if (res) |data| {
-        const value = net.bigEndianToStruct(net.ethernet_frame.Frame(@TypeOf(packet)), data);
-        log.info("value: {}", .{value});
-    }
-}
-
-fn send_test_udp_packet(nic: *net.Nic) !void {
-    const dhcp_header = net.dhcp.discoverPacket(nic.mac_address);
-    const packet = net.udp.Datagram(@TypeOf(dhcp_header)).init(68, 67, dhcp_header);
-    const data = nic.make_udp_packet(@TypeOf(dhcp_header), packet, .{ 0, 0, 0, 0 }, .{ 0xff, 0xff, 0xff, 0xff });
-    try nic.transmit_packet(&data);
 }
 
 fn runUserspaceProgram(launcher: *ProcessLauncher, allocator: std.mem.Allocator) void {

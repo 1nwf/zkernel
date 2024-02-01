@@ -55,7 +55,7 @@ pub fn initInterrupts() void {
     }
 }
 
-export fn default_handler(_: arch.thread.Context) usize {
+export fn default_handler(_: *arch.thread.Context) usize {
     log.err("interrupt triggered", .{});
     return 0;
 }

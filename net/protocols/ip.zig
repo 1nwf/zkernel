@@ -1,6 +1,8 @@
 const std = @import("std");
 const utils = @import("../utils.zig");
 
+pub const BROADCAST_ADDR: [4]u8 = .{0xff} ** 4;
+
 pub const IpNextHeaderProtocols = enum(u8) {
     Icmp = 1,
     Tcp = 6,

@@ -1,4 +1,5 @@
 const gdt = @import("gdt.zig");
+const Message = @import("syscalls").Message;
 
 pub export fn launch_thread(ctx: *const Context) noreturn {
     asm volatile (
@@ -51,5 +52,10 @@ pub const Context = extern struct {
             .esp = esp,
             .ss = gdt.user_data_offset | 3,
         };
+    }
+
+    pub fn setReturnMessage(self: *Context, msg: Message) void {
+        self.ebx = msg.msg;
+        self.eax = @intFromEnum(msg.mtype);
     }
 };

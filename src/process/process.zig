@@ -84,9 +84,4 @@ pub const Thread = struct {
     stack_end: usize,
     stack_size: usize,
     context: Context,
-
-    pub fn setReturnMessage(self: *Thread, msg: Message) void {
-        self.context.ebx = msg.msg;
-        self.context.eax = @intFromEnum(msg.mtype);
-    }
 };

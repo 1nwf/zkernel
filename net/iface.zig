@@ -11,7 +11,7 @@ const dhcp = @import("protocols/dhcp.zig");
 
 nic: *Nic,
 allocator: std.mem.Allocator,
-sockets: std.AutoHashMap(Protocol, std.ArrayList(Socket)),
+sockets: std.ArrayList(Socket),
 
 ip_addr: [4]u8 = std.mem.zeroes([4]u8),
 router: [4]u8 = std.mem.zeroes([4]u8),
@@ -19,10 +19,10 @@ dns_addr: [4]u8 = std.mem.zeroes([4]u8),
 
 const Self = @This();
 
-pub fn init(allocator: std.mem.Allocator, nic: *Nic) Self {
+pub fn init(allocator: std.mem.Allocator, nic: *Nic) !Self {
     return Self{
         .nic = nic,
-        .sockets = std.AutoHashMap(Protocol, std.ArrayList(Socket)).init(allocator),
+        .sockets = std.ArrayList(Socket).init(allocator),
         .allocator = allocator,
     };
 }
@@ -53,31 +53,25 @@ pub fn process_ip(self: *Self, packet: *ip.IpPacket(void)) void {
 
 pub fn process_udp(self: *Self, datagram: *udp.Datagram(void)) void {
     var data: []u8 = @as([*]u8, @ptrCast(&datagram.data))[0 .. datagram.length - 8]; // 8 is the sie of the datagram header
-    if (self.sockets.get(.Udp)) |sockets| {
-        for (sockets.items) |*s| {
-            if (s.accepts(datagram.src_port, datagram.dest_port)) s.process(data);
+    for (self.sockets.items) |*socket| {
+        if (socket.options.protocol == .Udp and socket.accepts(datagram.src_port, datagram.dest_port)) {
+            socket.process(data);
         }
     }
 }
 
 pub fn dhcp_init(self: *Self, sleepFn: *const fn (ms: usize) void) !void {
-    var arr = try self.sockets.getOrPut(.Udp);
-    if (!arr.found_existing) {
-        arr.value_ptr.* = std.ArrayList(Socket).init(self.allocator);
-    }
-    try arr.value_ptr.append(Socket.init(self.allocator, .{
+    const socket = try self.createSocket(.{
         .src_port = 68,
         .dest_port = 67,
-        .dest_mac = .{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-        .dest_ip = .{ 0xff, 0xff, 0xff, 0xff },
+        .dest_mac = eth.BROADCAST_ADDR,
+        .dest_ip = ip.BROADCAST_ADDR,
         .src_ip = .{ 0, 0, 0, 0 },
         .src_mac = self.nic.mac_address,
         .protocol = .Udp,
-    }));
+    });
 
-    var socket = &arr.value_ptr.items[arr.value_ptr.items.len - 1];
-    socket.send(dhcp.discoverPacket(self.nic.mac_address)) catch {};
-
+    try socket.send(dhcp.discoverPacket(self.nic.mac_address));
     if (!socket.can_recv()) {
         sleepFn(500);
     }
@@ -122,4 +116,9 @@ pub fn dhcp_init(self: *Self, sleepFn: *const fn (ms: usize) void) !void {
         }
     }
     self.ip_addr = ip_addr;
+}
+
+pub fn createSocket(self: *Self, options: Socket.Options) !*Socket {
+    try self.sockets.append(Socket.init(self.allocator, options));
+    return &self.sockets.items[self.sockets.items.len - 1];
 }

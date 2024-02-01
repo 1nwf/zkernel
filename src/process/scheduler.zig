@@ -2,22 +2,23 @@ const std = @import("std");
 const process = @import("process.zig");
 const Thread = process.Thread;
 const arch = @import("arch");
-const Deque = @import("../utils/deque.zig").Deque;
+const RingBuffer = @import("../utils/ring_buffer.zig").RingBuffer;
 
-const RunQueue = Deque(*Thread, 14);
+const RunQueue = RingBuffer(*Thread, 256);
 
 run_queue: RunQueue,
 active_thread: ?*Thread = null,
 var self: @This() = undefined;
 
 pub fn init(allocator: std.mem.Allocator) !void {
+    _ = allocator;
     self = .{
-        .run_queue = try RunQueue.init(allocator),
+        .run_queue = RunQueue.init(),
     };
 }
 
 pub fn schedule_thread(thread: *Thread) !void {
-    try self.run_queue.pushBack(thread);
+    _ = try self.run_queue.append(thread);
 }
 
 pub fn setActiveThread(ctx: arch.thread.Context, th: ?*Thread) !void {
@@ -37,7 +38,7 @@ pub fn run_next(ctx: arch.thread.Context) ?*arch.thread.Context {
         th.context = ctx;
         schedule_thread(th) catch {};
     }
-    const next = self.run_queue.popFront() orelse return null;
+    const next = self.run_queue.pop() orelse return null;
     self.active_thread = next;
     next.process.page_dir.load();
     return &self.active_thread.?.context;

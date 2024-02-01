@@ -10,7 +10,7 @@ const Self = @This();
 
 pub const Protocol = enum { Udp };
 
-const SocketOptions = struct {
+pub const Options = struct {
     src_port: u16,
     dest_port: u16,
     //
@@ -22,12 +22,12 @@ const SocketOptions = struct {
     protocol: Protocol,
 };
 
-options: SocketOptions,
+options: Options,
 allocator: std.mem.Allocator,
 // TODO: use ring buffer
 rx_buffer: std.ArrayList([]u8),
 
-pub fn init(allocator: std.mem.Allocator, options: SocketOptions) Self {
+pub fn init(allocator: std.mem.Allocator, options: Options) Self {
     return .{
         .options = options,
         .allocator = allocator,

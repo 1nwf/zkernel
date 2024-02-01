@@ -178,7 +178,7 @@ fn read_mac_addr(self: *const Self) [6]u8 {
 }
 
 const rtl8139_int_handler = arch.interrupt_handler(interrupt_handler);
-export fn interrupt_handler(_: arch.thread.Context) usize {
+export fn interrupt_handler(_: *arch.thread.Context) usize {
     const status = device.registers.isr.read();
     device.registers.isr.write(0x5);
     if (status & TOK == TOK) {

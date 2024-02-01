@@ -4,7 +4,7 @@ const arch = @import("arch");
 // NOTE: address that caused page fault is stored in the `cr2` register
 
 pub const page_fault_interrupt_handler = arch.interrupt_handler(pageFaultHandler);
-export fn pageFaultHandler(ctx: arch.thread.Context) usize {
+export fn pageFaultHandler(ctx: *arch.thread.Context) usize {
     _ = ctx;
     const cr2 = asm volatile (
         \\ mov %%cr2, %[cr2]

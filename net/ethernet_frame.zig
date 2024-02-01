@@ -1,6 +1,8 @@
 const std = @import("std");
 const mem = std.mem;
 
+pub const BROADCAST_ADDR: [6]u8 = .{0xff} ** 6;
+
 pub const Protocol = enum(u16) {
     Arp = 0x806,
     Ipv4 = 0x800,
