@@ -8,6 +8,7 @@ const Syscall = syscalls.Syscall;
 const CreateSocketOptions = syscalls.CreateSocketOptions;
 const net = @import("net");
 const Socket = @import("net").Socket;
+const UdpSocket = @import("net").UdpSocket;
 
 const exit = @import("exit.zig").exit;
 
@@ -102,18 +103,22 @@ fn read(ctx: arch.thread.Context, handle: u32) ?*arch.thread.Context {
 }
 
 fn createSocket(options: CreateSocketOptions) !usize {
-    const socket_options = Socket.Options{
-        .dest_port = options.dest_port,
-        .dest_ip = options.dest_ip,
-        .dest_mac = .{0xff} ** 6, // TODO: set dest_mac addr
+    var socket: Socket = undefined;
+    switch (options.protocol) {
+        .Udp => {
+            const udp_socket = UdpSocket.init(.{
+                .dest_ip = options.dest_ip,
+                .dest_port = options.dest_port,
+                .dest_mac = .{0xff} ** 6, //TODO: set value
 
-        .src_port = 1, // TODO: set src_port to a random number
-        .src_ip = net.IFACE.ip_addr,
-        .src_mac = net.IFACE.nic.mac_address,
-
-        .protocol = @enumFromInt(@intFromEnum(options.protocol)),
-    };
-    _ = try net.IFACE.createSocket(socket_options);
+                .src_port = 1, // TODO: set value
+                .src_ip = net.IFACE.ip_addr,
+                .src_mac = net.IFACE.nic.mac_address,
+            }, net.IFACE.allocator);
+            socket = .{ .udp = udp_socket };
+        },
+    }
+    _ = try net.IFACE.createSocket(socket);
     const idx = net.IFACE.sockets.items.len - 1;
     return idx;
 }

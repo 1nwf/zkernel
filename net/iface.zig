@@ -2,12 +2,15 @@ const std = @import("std");
 const log = std.log;
 const utils = @import("utils.zig");
 const Nic = @import("Nic.zig");
-const Socket = @import("socket.zig");
 const Protocol = Socket.Protocol;
 const ip = @import("protocols/ip.zig");
 const udp = @import("protocols/udp.zig");
 const eth = @import("ethernet_frame.zig");
 const dhcp = @import("protocols/dhcp.zig");
+
+const Socket = @import("socket/socket.zig").Socket;
+const UdpSocket = @import("socket/UdpSocket.zig");
+const SockI = @import("socket/socket.zig");
 
 nic: *Nic,
 allocator: std.mem.Allocator,
@@ -45,34 +48,40 @@ pub fn process_ip(self: *Self, packet: *ip.IpPacket(void)) void {
         .Udp => {
             const datagram: *udp.Datagram(void) = @ptrCast(&packet.data);
             try utils.byteSwapStruct(udp.Datagram(void), datagram);
-            self.process_udp(datagram);
+            self.process_udp(packet.header.source_ip, datagram);
         },
         else => @panic("not yet supported"),
     }
 }
 
-pub fn process_udp(self: *Self, datagram: *udp.Datagram(void)) void {
+pub fn process_udp(self: *Self, src_ip: [4]u8, datagram: *udp.Datagram(void)) void {
     var data: []u8 = @as([*]u8, @ptrCast(&datagram.data))[0 .. datagram.length - 8]; // 8 is the sie of the datagram header
     for (self.sockets.items) |*socket| {
-        if (socket.options.protocol == .Udp and socket.accepts(datagram.src_port, datagram.dest_port)) {
-            socket.process(data);
+        switch (socket.*) {
+            .udp => |*s| {
+                if (s.accepts(src_ip, datagram.src_port, datagram.dest_port)) {
+                    s.process(data) catch {};
+                    break;
+                }
+            },
         }
     }
 }
 
 pub fn dhcp_init(self: *Self, sleepFn: *const fn (ms: usize) void) !void {
-    const socket = try self.createSocket(.{
+    const udp_socket = UdpSocket.init(.{
         .src_port = 68,
         .dest_port = 67,
         .dest_mac = eth.BROADCAST_ADDR,
         .dest_ip = ip.BROADCAST_ADDR,
         .src_ip = .{ 0, 0, 0, 0 },
         .src_mac = self.nic.mac_address,
-        .protocol = .Udp,
-    });
+    }, self.allocator);
+
+    var socket = try self.createSocket(.{ .udp = udp_socket });
 
     try socket.send(dhcp.discoverPacket(self.nic.mac_address));
-    if (!socket.can_recv()) {
+    if (!socket.canRecv()) {
         sleepFn(500);
     }
 
@@ -90,10 +99,10 @@ pub fn dhcp_init(self: *Self, sleepFn: *const fn (ms: usize) void) !void {
         }
     }
 
-    socket.options.src_ip = ip_addr;
+    // socket.options.src_ip = ip_addr;
     try socket.send(dhcp.makeRequest(self.nic.mac_address, ip_addr, dhcp_id));
 
-    if (!socket.can_recv()) {
+    if (!socket.canRecv()) {
         sleepFn(500);
     }
 
@@ -118,7 +127,7 @@ pub fn dhcp_init(self: *Self, sleepFn: *const fn (ms: usize) void) !void {
     self.ip_addr = ip_addr;
 }
 
-pub fn createSocket(self: *Self, options: Socket.Options) !*Socket {
-    try self.sockets.append(Socket.init(self.allocator, options));
+pub fn createSocket(self: *Self, s: Socket) !*Socket {
+    try self.sockets.append(s);
     return &self.sockets.items[self.sockets.items.len - 1];
 }
